@@ -1,7 +1,7 @@
+import time
 import can
 import urwid
-import json
-import time
+import signal
 from src.odrive_configurator import discover_node_ids
 from src.odrive_control import set_closed_loop_control, move_odrive_to_position, set_idle_mode
 
@@ -28,15 +28,49 @@ class ODriveSlider(urwid.WidgetWrap):
         if not move_odrive_to_position(self.bus, self.node_id, self.value):
             print(f"Failed to move ODrive {self.node_id} to position {self.value}")
 
+def clean_shutdown(node_ids, bus):
+    print("\nExiting... Resetting ODrives to position 0 and setting them to idle.")
+    # First, reset the positions of all ODrives to 0
+    for node_id in node_ids:
+        if not move_odrive_to_position(bus, node_id, 0):
+            print(f"Failed to reset position for ODrive {node_id}")
+   
+    time.sleep(2)
+
+    # Then, set all ODrives to idle mode
+    for node_id in node_ids:
+        if not set_idle_mode(bus, node_id):
+            print(f"Failed to set idle mode for ODrive {node_id}")
+
+    if bus is not None:
+        bus.shutdown()
+
+def signal_handler(signal, frame):
+    raise KeyboardInterrupt
+
+def handle_input(key, columns, sliders, loop, node_ids, bus):
+    if key == 'esc':
+        clean_shutdown(node_ids, bus)  # Call clean_shutdown here before exiting
+        raise urwid.ExitMainLoop()
+    elif key in ('up', 'down'):
+        focus = columns.focus_position
+        slider = sliders[focus]
+        if key == 'up' and slider.value < slider.max_val:
+            slider.value += 0.1
+        elif key == 'down' and slider.value > slider.min_val:
+            slider.value -= 0.1
+        slider.edit.set_edit_text(f"{slider.value:.1f}")
+        slider.move_motor()
+    elif key in ('left', 'right'):
+        focus = columns.focus_position
+        columns.focus_position = max(0, min(len(sliders) - 1, focus + (1 if key == 'right' else -1)))
+
 def main():
+    signal.signal(signal.SIGINT, signal_handler)  # Catch CTRL+C signal
     bus = can.interface.Bus("can0", bustype="socketcan")
     node_ids = discover_node_ids(bus, discovery_duration=2)
     
-    # Adjust the range for each ODrive based on its position in the list
-    sliders = []
-    for i, node_id in enumerate(node_ids):
-        min_val, max_val = (-2.9, 2.9) if i % 2 == 1 else (-5, 5)
-        sliders.append(ODriveSlider(node_id, bus, min_val, max_val))
+    sliders = [ODriveSlider(node_id, bus, -5, 5) for node_id in node_ids]
     
     for node_id in node_ids:
         if not set_closed_loop_control(bus, node_id):
@@ -46,29 +80,14 @@ def main():
     columns = urwid.Columns([urwid.LineBox(slider) for slider in sliders])
     frame = urwid.Frame(urwid.Filler(columns, valign='top'), footer=urwid.Text("Press ESC to exit", align='center'))
 
-    def handle_input(key):
-        if key == 'esc':
-            raise urwid.ExitMainLoop()
-        elif key in ('up', 'down'):
-            focus = columns.focus_position
-            slider = sliders[focus]
-            if key == 'up' and slider.value < slider.max_val:
-                slider.value += 0.1
-            elif key == 'down' and slider.value > slider.min_val:
-                slider.value -= 0.1
-            slider.edit.set_edit_text(f"{slider.value:.1f}")
-            slider.move_motor()
-        elif key in ('left', 'right'):
-            focus = columns.focus_position
-            columns.focus_position = max(0, min(len(sliders) - 1, focus + (1 if key == 'right' else -1)))
+    loop = urwid.MainLoop(frame, palette=[('reversed', 'standout', '')], unhandled_input=lambda key: handle_input(key, columns, sliders, loop, node_ids, bus))
 
-    urwid.MainLoop(frame, palette=[('reversed', 'standout', '')], unhandled_input=handle_input).run()
-
-    for node_id in node_ids:
-        if not move_odrive_to_position(bus, node_id, 0) or not set_idle_mode(bus, node_id):
-            print(f"Failed to reset ODrive {node_id}")
-
-    if bus: bus.shutdown()
+    try:
+        loop.run()
+    except KeyboardInterrupt:
+        clean_shutdown(node_ids, bus)
+    finally:
+        if bus: bus.shutdown()
 
 if __name__ == "__main__":
     main()

@@ -53,7 +53,6 @@ def main():
                 print(f"Failed to reset position for ODrive {node_id}")
         time.sleep(2)
 
-
         # Then, set all ODrives to idle mode
         for node_id in node_ids:
             if not set_idle_mode(bus, node_id):
