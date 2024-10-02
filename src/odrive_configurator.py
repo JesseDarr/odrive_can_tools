@@ -109,7 +109,7 @@ def check_firmware_hardware_version(bus, node_id, fw_version_expected, hw_versio
         hw_version_actual = f"{hw_product_line}.{hw_version}.{hw_variant}"
 
         if fw_version_actual != fw_version_expected or hw_version_actual != hw_version_expected:
-            raise ValueError(f"Node {node_id} version mismatch. Firmware: {fw_version_actual}, Hardware: {hw_version_actual}")
+            raise ValueError(f"Node {node_id} version mismatch. Firmware: {fw_version_actual} - Expected: {fw_version_expected}, Hardware: {hw_version_actual} - Expected: {hw_version_expected}")
     else:
         print(f"[ERROR] No response received when checking firmware and hardware version for node {node_id}.")
 

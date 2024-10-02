@@ -35,7 +35,7 @@ def clean_shutdown(node_ids, bus):
         if not move_odrive_to_position(bus, node_id, 0):
             print(f"Failed to reset position for ODrive {node_id}")
    
-    time.sleep(3)
+    time.sleep(5)
 
     # Then, set all ODrives to idle mode
     for node_id in node_ids:

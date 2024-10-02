@@ -13,14 +13,16 @@
         {"path": "axis0.config.can.error_msg_rate_ms",              "value": 10},
         {"path": "axis0.config.can.temperature_msg_rate_ms",        "value": 10},
         {"path": "axis0.config.can.bus_voltage_msg_rate_ms",        "value": 10},
+        {"path": "config.dc_bus_undervoltage_trip_level",           "value": 46},
+        {"path": "config.dc_bus_overvoltage_trip_level",            "value": 50},
         {"path": "axis0.controller.config.input_mode",              "value": 5},
         {"path": "axis0.controller.config.control_mode",            "value": 3},
         {"path": "axis0.controller.config.vel_limit",               "value": 20},
-        {"path": "axis0.controller.config.pos_gain",                "value": 70},
+        {"path": "axis0.controller.config.pos_gain",                "value": 75},
         {"path": "axis0.controller.config.vel_gain",                "value": 0.25},
         {"path": "axis0.controller.config.vel_integrator_gain",     "value": 1.25},
-        {"path": "axis0.trap_traj.config.accel_limit",              "value": 2.5},
-        {"path": "axis0.trap_traj.config.decel_limit",              "value": 2.5},
-        {"path": "axis0.trap_traj.config.vel_limit",                "value": 4}
+        {"path": "axis0.trap_traj.config.accel_limit",              "value": 3.0},
+        {"path": "axis0.trap_traj.config.decel_limit",              "value": 3.0},
+        {"path": "axis0.trap_traj.config.vel_limit",                "value": 4.0}
     ]
 }
