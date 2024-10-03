@@ -84,13 +84,13 @@ def configure_odrive(bus, node_id, path, value, endpoints):
     if current_value != value:
         write_config(bus, node_id, endpoint_id, endpoint_type, value)
         if not validate_config(bus, node_id, endpoint_id, endpoint_type, value):
-            print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<7} - status: update failed")
+            print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: update failed")
             return False
         else:
-            print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<7} - status: update success")
+            print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: update success")
             return True
     else:
-        print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<7} - status: already set")
+        print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: already set")
         return True
 
 

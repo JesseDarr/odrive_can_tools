@@ -5,19 +5,11 @@
         {"path": "config.dc_bus_overvoltage_trip_level",            "value": 32}, 
         {"path": "config.dc_bus_undervoltage_trip_level",           "value": 22}, 
         {"path": "config.dc_max_positive_current",                  "value": 10},  
-        {"path": "axis0.config.use_brake_resistor",                 "value": true},
-        {"path": "axis0.config.brake_resistance",                   "value": 2},   
 
         {"path": "axis0.config.motor.pole_pairs",                   "value": 20},  
-        {"path": "axis0.config.motor.current_limit",                "value": 36},  
         {"path": "axis0.config.motor.calibration_current",          "value": 18},  
         {"path": "axis0.config.motor.resistance_calib_max_voltage", "value": 5},  
-        {"path": "axis0.config.motor.lockin_spin_current",          "value": 18},  
 
-        {"path": "axis0.config.soft_velocity_limit",                "value": 20},  
-        {"path": "axis0.config.hard_velocity_limit",                "value": 36},  
-
-        {"path": "axis0.config.can.baud_rate",                      "value": 1000000},
         {"path": "axis0.config.can.heartbeat_msg_rate_ms",          "value": 100},
         {"path": "axis0.config.can.encoder_msg_rate_ms",            "value": 10}, 
         {"path": "axis0.config.can.iq_msg_rate_ms",                 "value": 10}, 
