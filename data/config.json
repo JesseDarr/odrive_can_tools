@@ -52,8 +52,8 @@
             {"path": "config.dc_bus_overvoltage_trip_level",            "value": 32}, 
             {"path": "config.dc_bus_undervoltage_trip_level",           "value": 22}, 
             {"path": "config.dc_max_positive_current",                  "value": 10},  
-            {"path": "config.brake_resistor1.enable",                   "value": true},  
-            {"path": "config.brake_resistor1.resistance",               "value": 2},  
+            {"path": "config.brake_resistor0.enable",                   "value": true},  
+            {"path": "config.brake_resistor0.resistance",               "value": 2},  
 
             {"path": "axis0.config.motor.motor_type",                   "value": 2},
             {"path": "axis0.config.motor.phase_resistance",             "value": 16.4},
