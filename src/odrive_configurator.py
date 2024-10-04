@@ -65,8 +65,10 @@ def read_config(bus, node_id, endpoint_id, endpoint_type):
         return None
 
 def write_config(bus, node_id, endpoint_id, endpoint_type, value):
-    # Write a configuration value to an ODrive node
-    send_can_message(bus, node_id, RXSDO, '<BHB' + format_lookup[endpoint_type], WRITE, endpoint_id, 0, value)
+    # Send the CAN message
+    message_format = '<BHB' + format_lookup[endpoint_type]
+    send_can_message(bus, node_id, RXSDO, message_format, WRITE, endpoint_id, 0, value)
+
 
 def validate_config(bus, node_id, endpoint_id, endpoint_type, expected_value):
     # Validate a configuration value on an ODrive node
@@ -92,7 +94,6 @@ def configure_odrive(bus, node_id, path, value, endpoints):
     else:
         print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: already set")
         return True
-
 
 def save_config(bus, node_id, save_endpoint_id):
     # Send a command to save the current configuration on an ODrive node

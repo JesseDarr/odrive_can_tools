@@ -6,7 +6,7 @@ def configure_node(bus, node_id, config_settings, endpoints):
     # Configure a single ODrive node with specified settings
     try:
         # Check if the ODrive node's firmware and hardware versions match expected values
-        # check_firmware_hardware_version(bus, node_id, endpoints['fw_version'], endpoints['hw_version']) # it was very dumb to disable this, I am dumb
+        check_firmware_hardware_version(bus, node_id, endpoints['fw_version'], endpoints['hw_version']) # it was very dumb to disable this, I am dumb
 
         # Iterate through each setting in the configuration and apply it to the ODrive node
         for setting in config_settings:

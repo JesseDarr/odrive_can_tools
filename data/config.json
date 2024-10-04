@@ -10,6 +10,7 @@
         {"path": "axis0.config.motor.calibration_current",          "value": 18},  
         {"path": "axis0.config.motor.resistance_calib_max_voltage", "value": 5},  
 
+        {"path": "can.config.baud_rate",                            "value": 1000000},
         {"path": "axis0.config.can.heartbeat_msg_rate_ms",          "value": 100},
         {"path": "axis0.config.can.encoder_msg_rate_ms",            "value": 10}, 
         {"path": "axis0.config.can.iq_msg_rate_ms",                 "value": 10}, 
