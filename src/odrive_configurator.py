@@ -81,7 +81,7 @@ def configure_odrive(bus, node_id, path, value, endpoints):
 
     current_value = read_config(bus, node_id, endpoint_id, endpoint_type)
     if isinstance(current_value, float):
-        current_value = round(current_value, 3)
+        current_value = round(current_value, 4)
 
     if current_value != value:
         write_config(bus, node_id, endpoint_id, endpoint_type, value)
