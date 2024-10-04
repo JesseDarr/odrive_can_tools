@@ -20,18 +20,20 @@ format_lookup = {
 
 def load_configuration_and_endpoints():
     # Load configuration and endpoint data from JSON
-    script_dir     = os.path.dirname(os.path.abspath(__file__))
-    json_path      = os.path.join(script_dir, '..', 'data', 'config.json')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    json_path = os.path.join(script_dir, '..', 'data', 'config.json')
     endpoints_path = os.path.join(script_dir, '..', 'data', 'flat_endpoints.json')
 
+    # Load the config JSON
     with open(json_path, 'r') as f:
         config_json = json.load(f)
-    config_settings = config_json['settings']
 
+    # Load the endpoints JSON
     with open(endpoints_path, 'r') as f:
         endpoints = json.load(f)
 
-    return config_settings, endpoints
+    return config_json, endpoints
+
 
 def extract_node_id(arbitration_id):
     # Extract the node ID from a CAN arbitration ID

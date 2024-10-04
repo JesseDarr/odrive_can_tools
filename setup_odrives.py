@@ -32,14 +32,24 @@ def main():
         bus = can.interface.Bus("can0", bustype="socketcan")
         node_ids = discover_node_ids(bus, discovery_duration=2)
 
-        config_settings, endpoints = load_configuration_and_endpoints()
+        # Load configuration and endpoints
+        config_data, endpoints = load_configuration_and_endpoints()
 
-        for node_id in node_ids:
+        # Iterate through each node and assign appropriate motor settings
+        for idx, node_id in enumerate(node_ids):
             print(f"Configuring node {node_id}")
+            
+            # Apply 8308 settings for the first 4 nodes, GB36 settings for the last 2 nodes
+            if idx < 4:
+                config_settings = config_data["8308"]["settings"]
+            else:
+                config_settings = config_data["GB36"]["settings"]
+
             if not configure_node(bus, node_id, config_settings, endpoints):
                 print("Exiting due to an error in configuring a node.")
                 return
-            print() # for cleaner output
+
+            print()  # for cleaner output
 
     except (can.CanError, OSError, FileNotFoundError, json.JSONDecodeError) as e:
         print(f"Initialization error: {e}")
