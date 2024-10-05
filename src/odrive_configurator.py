@@ -19,21 +19,22 @@ format_lookup = {
 }
 
 def load_configuration_and_endpoints():
-    # Load configuration and endpoint data from JSON
+    # Define the relative paths to the config and endpoints files
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    json_path = os.path.join(script_dir, '..', 'data', 'config.json')
+    config_path = os.path.join(script_dir, '..', 'data', 'config.py')
     endpoints_path = os.path.join(script_dir, '..', 'data', 'flat_endpoints.json')
 
-    # Load the config JSON
-    with open(json_path, 'r') as f:
-        config_json = json.load(f)
+    # Read the config file and execute its contents
+    config = {}
+    with open(config_path, 'r') as config_file:
+        exec(config_file.read(), globals(), config)
 
-    # Load the endpoints JSON
+    # Load the endpoints from the flat_endpoints.json file
     with open(endpoints_path, 'r') as f:
         endpoints = json.load(f)
 
-    return config_json, endpoints
-
+    # Return the loaded config and endpoints
+    return config['config'], endpoints  # Access the 'config' key inside the exec'd config.py
 
 def extract_node_id(arbitration_id):
     # Extract the node ID from a CAN arbitration ID
