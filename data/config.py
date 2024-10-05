@@ -6,7 +6,7 @@ config = {
             # DC bus settings
             {"path": "config.dc_bus_overvoltage_trip_level",            "value": 50}, 
             {"path": "config.dc_bus_undervoltage_trip_level",           "value": 42}, 
-            {"path": "config.dc_max_positive_current",                  "value": 10},  
+            {"path": "config.dc_max_positive_current",                  "value": 36},  
             {"path": "config.brake_resistor0.enable",                   "value": True},  
             {"path": "config.brake_resistor0.resistance",               "value": 2},  
 
@@ -42,8 +42,8 @@ config = {
 
             # Gains and limits
             {"path": "axis0.controller.config.pos_gain",                "value": 30},  
-            {"path": "axis0.controller.config.vel_gain",                "value": 0.14},
-            {"path": "axis0.controller.config.vel_integrator_gain",     "value": 0.7}, 
+            {"path": "axis0.controller.config.vel_gain",                "value": 0.7},
+            {"path": "axis0.controller.config.vel_integrator_gain",     "value": 3.5}, 
             {"path": "axis0.trap_traj.config.vel_limit",                "value": 6},  
             {"path": "axis0.trap_traj.config.accel_limit",              "value": 20},  
             {"path": "axis0.trap_traj.config.decel_limit",              "value": 20}, 
