@@ -2,21 +2,29 @@ import time
 import can
 import urwid
 import signal
-from src.odrive_configurator import discover_node_ids
+from src.odrive_configurator import discover_node_ids, load_configuration_and_endpoints
 from src.odrive_control import set_closed_loop_control, move_odrive_to_position, set_idle_mode
 
 class ODriveSlider(urwid.WidgetWrap):
     def __init__(self, node_ids, bus, min_val, max_val, differential=False):
         self.node_ids = node_ids  # can be a single or list of node_ids
-        self.bus, self.min_val, self.max_val = bus, min_val, max_val
+        self.bus = bus
+        self.min_val = min_val
+        self.max_val = max_val
         self.value = 0.0
         self.differential = differential  # Track if it's a differential slider
 
         # Slider label, can mention multiple ODrives if necessary
         label = f"ODrive {', '.join(map(str, self.node_ids))}: "
         self.edit = urwid.Edit(label, "0.0")
+
+        # Add the slider to a pile layout
+        pile = urwid.Pile([
+            self.edit
+        ])
+
         urwid.connect_signal(self.edit, 'change', self.on_edit_change)
-        self._w = urwid.AttrMap(self.edit, None, focus_map='reversed')
+        self._w = urwid.AttrMap(pile, None, focus_map='reversed')
 
     def on_edit_change(self, edit, new_text):
         try:
@@ -107,4 +115,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

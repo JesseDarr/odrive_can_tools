@@ -1,6 +1,6 @@
 import struct
 import can
-from src.can_utils import send_can_message
+from src.can_utils import send_can_message, receive_can_message
 
 def set_idle_mode(bus, node_id):
     try:
