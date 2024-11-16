@@ -72,7 +72,6 @@ def write_config(bus, node_id, endpoint_id, endpoint_type, value):
     message_format = '<BHB' + format_lookup[endpoint_type]
     send_can_message(bus, node_id, RXSDO, message_format, WRITE, endpoint_id, 0, value)
 
-
 def validate_config(bus, node_id, endpoint_id, endpoint_type, expected_value):
     # Validate a configuration value on an ODrive node
     actual_value = read_config(bus, node_id, endpoint_id, endpoint_type)

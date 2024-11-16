@@ -4,7 +4,7 @@ config = {
             {"path": "axis0.current_state",                             "value": 1},
 
             # DC bus settings
-            {"path": "config.dc_bus_overvoltage_trip_level",            "value": 50}, 
+            {"path": "config.dc_bus_overvoltage_trip_level",            "value": 54}, 
             {"path": "config.dc_bus_undervoltage_trip_level",           "value": 20}, 
             {"path": "config.dc_max_positive_current",                  "value": 30},  
             {"path": "config.brake_resistor0.enable",                   "value": True},  
@@ -41,12 +41,12 @@ config = {
             {"path": "axis0.config.can.bus_voltage_msg_rate_ms",        "value": 10},
 
             # Gains and limits
-            {"path": "axis0.controller.config.pos_gain",                "value": 20},   # proportional gain # stiffness
-            {"path": "axis0.controller.config.vel_gain",                "value": 0.14}, # derivative gain   # dampen overshoot
-            {"path": "axis0.controller.config.vel_integrator_gain",     "value": 0.7},  # integral gain     # adjust steady-state error
+            {"path": "axis0.controller.config.pos_gain",                "value": 180},   # proportional gain # stiffness
+            {"path": "axis0.controller.config.vel_gain",                "value": 5},  # derivative gain   # dampen overshoot
+            {"path": "axis0.controller.config.vel_integrator_gain",     "value": 2},  # integral gain     # adjust steady-state error
             {"path": "axis0.trap_traj.config.vel_limit",                "value": 6},  
-            {"path": "axis0.trap_traj.config.accel_limit",              "value": 20},  
-            {"path": "axis0.trap_traj.config.decel_limit",              "value": 20}, 
+            {"path": "axis0.trap_traj.config.accel_limit",              "value": 10},  
+            {"path": "axis0.trap_traj.config.decel_limit",              "value": 10}, 
             {"path": "axis0.controller.config.inertia",                 "value": 0}     # moment of inertia # try 0.33 to start
         ]
     },
