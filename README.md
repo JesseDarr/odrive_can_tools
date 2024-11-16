@@ -10,8 +10,6 @@ These tools provide functionality for interacting with ODrive devices via a CAN 
 ## Tools and Scripts
 - **clear_all_errors.py**: Clears all errors on detected ODrive devices.
 - **setup_odrives.py**: Configures ODrive devices based on settings specified in `config.json`.
-- **do_the_wave.py**: Moves all odrives to a position and then to the negative of that position - DANGEROUS
-- **set_position.py**: Moves all odrives to the same position - DANGEROUS
 - **slider_explorer.py**: Slider tUI, controls position for all ODrvies.
 
 ## Project Structure
@@ -19,8 +17,6 @@ These tools provide functionality for interacting with ODrive devices via a CAN 
 tools/
 ├── README.md
 ├── clear_all_errors.py
-├── do_the_wave.py
-├── set_position.py
 ├── setup_odrives.py
 ├── slider_explorer.py
 ├── data
