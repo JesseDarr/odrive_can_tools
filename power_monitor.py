@@ -1,7 +1,8 @@
 import can
 import curses
 import time
-from src.odrive_configurator import load_configuration_and_endpoints, discover_node_ids, read_config
+from src.can_utils import discover_node_ids
+from src.odrive_configurator import load_endpoints, read_config
 
 # Constants for endpoint paths
 VOLTAGE_ENDPOINT = "vbus_voltage"
@@ -53,8 +54,8 @@ def main():
     # Initialize CAN bus
     bus = can.interface.Bus(channel='can0', bustype='socketcan')
 
-    # Load configuration and endpoints
-    _, endpoints = load_configuration_and_endpoints()
+    # Load endpoints
+    endpoints = load_endpoints()
 
     # Discover ODrive node IDs
     print("Discovering ODrives on the CAN network...")

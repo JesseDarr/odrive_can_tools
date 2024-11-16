@@ -1,8 +1,25 @@
 import struct
+import time
 import can
 
 def extract_node_id(arbitration_id):
     return arbitration_id >> 5
+
+def discover_node_ids(bus, discovery_duration=5):
+    # Discover ODrive node IDs on the CAN network
+    while bus.recv(timeout=0) is not None: pass
+    end_time = time.time() + discovery_duration
+    node_ids = set()
+
+    while time.time() < end_time:
+        msg = bus.recv(timeout=1)
+        if msg: node_ids.add(extract_node_id(msg.arbitration_id))
+
+    # Print the number of discovered ODrives
+    print(f"Discovered {len(node_ids)} ODrive(s) on the network:")
+    print()
+
+    return node_ids
 
 def send_can_message(bus, node_id, command_id, data_format, *data_args):
     try:

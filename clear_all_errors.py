@@ -1,33 +1,9 @@
 import argparse
+import json
 import can
 import sys
-from src.odrive_configurator import *
-
-def clear_errors(bus, node_id, endpoints, clear=True):
-    # List of endpoint paths based on ODrive documentation
-    error_endpoints = [
-        "axis0.active_errors",        # Active errors on the axis
-        "axis0.disarm_reason",        # Reason for disarm
-    ]
-
-    # Clears or reads errors for the specified ODrive node.
-    for error_endpoint in error_endpoints:
-        if error_endpoint in endpoints['endpoints']:
-            endpoint_id = endpoints['endpoints'][error_endpoint]['id']
-            endpoint_type = endpoints['endpoints'][error_endpoint]['type']
-            error_value = read_config(bus, node_id, endpoint_id, endpoint_type)
-
-            if error_value:
-                print(f"Node {node_id} - {error_endpoint} - Error: {error_value}")
-                if clear and "active_errors" in error_endpoint:  # Only clear active errors
-                    write_config(bus, node_id, endpoint_id, endpoint_type, 0)
-                    print(f"Node {node_id} - {error_endpoint} - Error cleared.")
-            else:
-                print(f"Node {node_id} - {error_endpoint} - No error.")
-        else:
-            print(f"Endpoint {error_endpoint} not found in the provided endpoints.")
-        print()
-
+from src.can_utils import discover_node_ids
+from src.odrive_configurator import load_endpoints, clear_errors
 
 def main():
     # Argument parser to handle flags
@@ -43,7 +19,7 @@ def main():
         node_ids = discover_node_ids(bus)
 
         # Load configuration and endpoint data
-        _, endpoints = load_configuration_and_endpoints()
+        endpoints = load_endpoints()
 
         # Clear or read errors for each discovered ODrive node
         for node_id in node_ids:

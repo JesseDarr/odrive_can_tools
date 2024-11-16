@@ -1,5 +1,5 @@
 import can
-import sys
+from src.can_utils import discover_node_ids
 from src.odrive_configurator import *
 
 def configure_node(bus, node_id, config_settings, endpoints):
@@ -33,7 +33,8 @@ def main():
         node_ids = discover_node_ids(bus, discovery_duration=2)
 
         # Load configuration and endpoints
-        config_data, endpoints = load_configuration_and_endpoints()
+        config_data = load_configuration()
+        endpoints = load_endpoints()
 
         # Iterate through each node and assign appropriate motor settings
         for idx, node_id in enumerate(node_ids):

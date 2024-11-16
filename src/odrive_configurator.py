@@ -2,7 +2,6 @@
 import json
 import os
 import struct
-import time
 from src.can_utils import send_can_message, receive_can_message
 
 # Constants for ODrive CAN operations
@@ -18,43 +17,26 @@ format_lookup = {
     'uint64': 'Q', 'int64': 'q', 'float': 'f'
 }
 
-def load_configuration_and_endpoints():
-    # Define the relative paths to the config and endpoints files
+def load_configuration():
+    # Load the configuration file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, '..', 'data', 'config.py')
-    endpoints_path = os.path.join(script_dir, '..', 'data', 'flat_endpoints.json')
 
-    # Read the config file and execute its contents
     config = {}
     with open(config_path, 'r') as config_file:
         exec(config_file.read(), globals(), config)
 
-    # Load the endpoints from the flat_endpoints.json file
+    return config['config']
+
+def load_endpoints():
+    # Load the endpoints file
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    endpoints_path = os.path.join(script_dir, '..', 'data', 'flat_endpoints.json')
+
     with open(endpoints_path, 'r') as f:
         endpoints = json.load(f)
 
-    # Return the loaded config and endpoints
-    return config['config'], endpoints  # Access the 'config' key inside the exec'd config.py
-
-def extract_node_id(arbitration_id):
-    # Extract the node ID from a CAN arbitration ID
-    return arbitration_id >> 5
-
-def discover_node_ids(bus, discovery_duration=5):
-    # Discover ODrive node IDs on the CAN network
-    while bus.recv(timeout=0) is not None: pass
-    end_time = time.time() + discovery_duration
-    node_ids = set()
-
-    while time.time() < end_time:
-        msg = bus.recv(timeout=1)
-        if msg: node_ids.add(extract_node_id(msg.arbitration_id))
-
-    # Print the number of discovered ODrives
-    print(f"Discovered {len(node_ids)} ODrive(s) on the network:")
-    print()
-
-    return node_ids
+    return endpoints
 
 def read_config(bus, node_id, endpoint_id, endpoint_type):
     # Read a configuration value from an ODrive node
@@ -116,17 +98,27 @@ def check_firmware_hardware_version(bus, node_id, fw_version_expected, hw_versio
     else:
         print(f"[ERROR] No response received when checking firmware and hardware version for node {node_id}.")
 
-def handle_errors(bus, node_id, error_endpoints):
-    # Reads and clears errors for the specified ODrive node.
-    for endpoint in error_endpoints:
-        endpoint_id = endpoint['id']
-        endpoint_type = endpoint['type']
-        error_value = read_config(bus, node_id, endpoint_id, endpoint_type)
+def clear_errors(bus, node_id, endpoints, clear=True):
+    # List of endpoint paths based on ODrive documentation
+    error_endpoints = [
+        "axis0.active_errors",        # Active errors on the axis
+        "axis0.disarm_reason",        # Reason for disarm
+    ]
 
-        if error_value:
-            print(f"Node {node_id} - {endpoint['path']} - Error: {error_value}")
-            # Clear the error by writing zero
-            write_config(bus, node_id, endpoint_id, endpoint_type, 0)
-            print(f"Node {node_id} - {endpoint['path']} - Error cleared.")
+    # Clears or reads errors for the specified ODrive node.
+    for error_endpoint in error_endpoints:
+        if error_endpoint in endpoints['endpoints']:
+            endpoint_id = endpoints['endpoints'][error_endpoint]['id']
+            endpoint_type = endpoints['endpoints'][error_endpoint]['type']
+            error_value = read_config(bus, node_id, endpoint_id, endpoint_type)
+
+            if error_value:
+                print(f"Node {node_id} - {error_endpoint} - Error: {error_value}")
+                if clear and "active_errors" in error_endpoint:  # Only clear active errors
+                    write_config(bus, node_id, endpoint_id, endpoint_type, 0)
+                    print(f"Node {node_id} - {error_endpoint} - Error cleared.")
+            else:
+                print(f"Node {node_id} - {error_endpoint} - No error.")
         else:
-            print(f"Node {node_id} - {endpoint['path']} - No error detected.")
+            print(f"Endpoint {error_endpoint} not found in the provided endpoints.")
+        print()            

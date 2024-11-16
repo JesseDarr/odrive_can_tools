@@ -2,7 +2,7 @@ import time
 import can
 import urwid
 import signal
-from src.odrive_configurator import discover_node_ids, load_configuration_and_endpoints
+from src.can_utils import discover_node_ids
 from src.odrive_control import set_closed_loop_control, move_odrive_to_position, set_idle_mode
 
 class ODriveSlider(urwid.WidgetWrap):
