@@ -59,26 +59,6 @@ def validate_config(bus, node_id, endpoint_id, endpoint_type, expected_value):
     actual_value = read_config(bus, node_id, endpoint_id, endpoint_type)
     return actual_value == expected_value
 
-def configure_odrive(bus, node_id, path, value, endpoints):
-    endpoint_id = endpoints['endpoints'][path]['id']
-    endpoint_type = endpoints['endpoints'][path]['type']
-
-    current_value = read_config(bus, node_id, endpoint_id, endpoint_type)
-    if isinstance(current_value, float):
-        current_value = round(current_value, 4)
-
-    if current_value != value:
-        write_config(bus, node_id, endpoint_id, endpoint_type, value)
-        if not validate_config(bus, node_id, endpoint_id, endpoint_type, value):
-            print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: update failed")
-            return False
-        else:
-            print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: update success")
-            return True
-    else:
-        print(f"    Node {node_id} - {path:50} - new: {value:<7} - cur: {current_value:<10} - status: already set")
-        return True
-
 def save_config(bus, node_id, save_endpoint_id):
     # Send a command to save the current configuration on an ODrive node
     send_can_message(bus, node_id, RXSDO, '<BHB', WRITE, save_endpoint_id, 0)
@@ -122,3 +102,46 @@ def clear_errors(bus, node_id, endpoints, clear=True):
         else:
             print(f"Endpoint {error_endpoint} not found in the provided endpoints.")
         print()            
+
+def set_odrive_parameter(bus, node_id, path, value, endpoints):
+    """
+    Sets a single parameter on an ODrive node.
+    """
+    endpoint_id = endpoints['endpoints'][path]['id']
+    endpoint_type = endpoints['endpoints'][path]['type']
+
+    current_value = read_config(bus, node_id, endpoint_id, endpoint_type)
+    if isinstance(current_value, float):
+        current_value = round(current_value, 4)
+
+    if current_value != value:
+        write_config(bus, node_id, endpoint_id, endpoint_type, value)
+        if not validate_config(bus, node_id, endpoint_id, endpoint_type, value):
+            print(f"[ERROR] Node {node_id} - {path:50} - Value not updated: Expected {value}, Got {current_value}")
+            return False
+        else:
+            print(f"[INFO] Node {node_id} - {path:50} - Updated: {value}")
+            return True
+    else:
+        print(f"[INFO] Node {node_id} - {path:50} - Already set: {current_value}")
+        return True
+
+def setup_odrive(bus, node_id, settings, endpoints):
+    """
+    Configures an entire ODrive node using provided settings.
+    """
+    try:
+        for setting in settings:
+            path = setting['path']
+            value = setting['value']
+            if not set_odrive_parameter(bus, node_id, path, value, endpoints):
+                print(f"[ERROR] Failed to apply setting {path} to node {node_id}")
+                return False
+
+        # Save the configuration
+        save_endpoint_id = endpoints['endpoints']['save_configuration']['id']
+        save_config(bus, node_id, save_endpoint_id)
+        return True
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during ODrive setup: {e}")
+        return False
