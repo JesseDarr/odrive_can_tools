@@ -2,71 +2,81 @@ import can
 import curses
 import time
 from src.can_utils import discover_node_ids
-from src.odrive_configurator import load_endpoints, read_config
+from src.odrive_configurator import load_endpoints
+from src.odrive_metrics import get_metrics
 
-# Constants for endpoint paths
-VOLTAGE_ENDPOINT = "vbus_voltage"
-CURRENT_ENDPOINT = "ibus"
 UPDATE_INTERVAL = 0.2  # Update interval in seconds
 
-def get_odrive_power(bus, node_id, endpoints):
-    # Read voltage and current from the ODrive
-    voltage = read_config(bus, node_id, endpoints["endpoints"][VOLTAGE_ENDPOINT]["id"], endpoints["endpoints"][VOLTAGE_ENDPOINT]["type"])
-    current = read_config(bus, node_id, endpoints["endpoints"][CURRENT_ENDPOINT]["id"], endpoints["endpoints"][CURRENT_ENDPOINT]["type"])
-    
-    # Calculate power (watts)
-    if voltage is not None and current is not None:
-        power = round(voltage * current, 2)
-        return voltage, current, power
-    else:
-        return None, None, None
-
 def monitor_odrive_power(stdscr, bus, node_ids, endpoints):
-    # Configure curses
+    """
+    Continuously monitor and display ODrive metrics in a curses-based interface.
+    """
     curses.curs_set(0)  # Hide the cursor
     stdscr.clear()
 
-    # Display headers
-    stdscr.addstr(0, 0, f"{'Node ID':<10} {'Voltage (V)':<15} {'Current (A)':<15} {'Power (W)':<15}")
-    stdscr.addstr(1, 0, "-" * 55)
+    # Convert node_ids to a list for indexing
+    node_ids = list(node_ids)
+
+    # Prepare headers
+    metrics_sample = get_metrics(bus, node_ids[0], endpoints) if node_ids else {}
+    header_row = f"{'Node ID':<10} " + " ".join([f"{metric_name.capitalize():<15}" for metric_name in metrics_sample.keys()])
+    stdscr.addstr(0, 0, header_row)
+    stdscr.addstr(1, 0, "-" * len(header_row))
 
     while True:
         try:
             # Update the data for each ODrive node
-            for idx, node_id in enumerate(node_ids):
-                voltage, current, power = get_odrive_power(bus, node_id, endpoints)
-                if voltage is not None:
-                    line = f"{node_id:<10} {voltage:<15.2f} {current:<15.2f} {power:<15.2f}"
-                else:
-                    line = f"{node_id:<10} {'Error':<15} {'Error':<15} {'Error':<15}"
-                stdscr.addstr(idx + 2, 0, line.ljust(55))  # Update the corresponding line
-            
+            row_offset = 2  # Start displaying data after the headers
+            for node_id in node_ids:
+                try:
+                    metrics = get_metrics(bus, node_id, endpoints)
+                    line = f"{node_id:<10} " + " ".join(
+                        [f"{(value if value is not None else 'Error'):<15.2f}" if isinstance(value, (int, float)) else "Error" for value in metrics.values()]
+                    )
+                    stdscr.addstr(row_offset, 0, line.ljust(len(header_row)))  # Pad to avoid overlapping
+                except Exception as e:
+                    # Handle per-node errors to avoid stopping the loop
+                    error_message = f"{node_id:<10} {'Error reading metrics':<15}"
+                    stdscr.addstr(row_offset, 0, error_message)
+                row_offset += 1
+
             stdscr.refresh()
             time.sleep(UPDATE_INTERVAL)
         except KeyboardInterrupt:
-            break
+            break  # Gracefully exit on Ctrl+C
         except Exception as e:
-            stdscr.addstr(len(node_ids) + 3, 0, f"[ERROR] {e}")
+            # Display global errors, but continue looping
+            stdscr.addstr(len(node_ids) + 3, 0, f"[ERROR] {e}".ljust(len(header_row)))
             stdscr.refresh()
             time.sleep(UPDATE_INTERVAL)
 
+
 def main():
-    # Initialize CAN bus
-    bus = can.interface.Bus(channel='can0', bustype='socketcan')
+    """
+    Main entry point for the power monitor script.
+    """
+    try:
+        # Initialize CAN bus
+        bus = can.interface.Bus(channel='can0', bustype='socketcan')
 
-    # Load endpoints
-    endpoints = load_endpoints()
+        # Load endpoints
+        endpoints = load_endpoints()
 
-    # Discover ODrive node IDs
-    print("Discovering ODrives on the CAN network...")
-    node_ids = discover_node_ids(bus)
-    
-    if not node_ids:
-        print("No ODrives detected on the network.")
-        return
+        # Discover ODrive node IDs
+        print("Discovering ODrives on the CAN network...")
+        node_ids = discover_node_ids(bus)
 
-    # Launch the curses interface
-    curses.wrapper(monitor_odrive_power, bus, node_ids, endpoints)
+        if not node_ids:
+            print("No ODrives detected on the network.")
+            return
+
+        # Launch the curses interface
+        curses.wrapper(monitor_odrive_power, bus, node_ids, endpoints)
+    except KeyboardInterrupt:
+        print("\nMonitor stopped by user.")
+    except Exception as e:
+        print(f"[ERROR] {e}")
+
 
 if __name__ == "__main__":
     main()

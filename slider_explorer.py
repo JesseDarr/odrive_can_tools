@@ -4,25 +4,23 @@ import urwid
 import signal
 from src.can_utils import discover_node_ids
 from src.odrive_control import set_closed_loop_control, move_odrive_to_position, set_idle_mode
+from src.odrive_configurator import load_endpoints
+from src.odrive_metrics import get_metrics
+
 
 class ODriveSlider(urwid.WidgetWrap):
     def __init__(self, node_ids, bus, min_val, max_val, differential=False):
-        self.node_ids = node_ids  # can be a single or list of node_ids
+        self.node_ids = node_ids
         self.bus = bus
         self.min_val = min_val
         self.max_val = max_val
         self.value = 0.0
-        self.differential = differential  # Track if it's a differential slider
+        self.differential = differential
 
-        # Slider label, can mention multiple ODrives if necessary
         label = f"ODrive {', '.join(map(str, self.node_ids))}: "
         self.edit = urwid.Edit(label, "0.0")
 
-        # Add the slider to a pile layout
-        pile = urwid.Pile([
-            self.edit
-        ])
-
+        pile = urwid.Pile([self.edit])
         urwid.connect_signal(self.edit, 'change', self.on_edit_change)
         self._w = urwid.AttrMap(pile, None, focus_map='reversed')
 
@@ -39,14 +37,44 @@ class ODriveSlider(urwid.WidgetWrap):
 
     def move_motor(self):
         if self.differential:
-            # Move the ODrives in opposite directions (differential)
             move_odrive_to_position(self.bus, self.node_ids[0], self.value)
             move_odrive_to_position(self.bus, self.node_ids[1], -self.value)
         else:
-            # Normal movement for single or dual ODrives in unison
             for node_id in self.node_ids:
                 if not move_odrive_to_position(self.bus, node_id, self.value):
                     print(f"Failed to move ODrive {node_id} to position {self.value}")
+
+
+class PowerMonitor:
+    def __init__(self, bus, node_ids, endpoints, display_widget, update_interval):
+        self.bus = bus
+        self.node_ids = node_ids
+        self.endpoints = endpoints
+        self.display_widget = display_widget
+        self.update_interval = update_interval
+        self.running = True
+
+    def start_monitoring(self):
+        while self.running:
+            try:
+                power_data = []
+                for node_id in self.node_ids:
+                    metrics = get_metrics(self.bus, node_id, self.endpoints)
+                    metrics_str = f"Node {node_id}: " + ", ".join(
+                        [f"{k}: {v:.2f}" if isinstance(v, (int, float)) else f"{k}: Error" for k, v in metrics.items()]
+                    )
+                    power_data.append(metrics_str)
+                self.update_display(power_data)
+                time.sleep(self.update_interval)
+            except Exception as e:
+                self.update_display([f"[ERROR] {e}"])
+
+    def stop(self):
+        self.running = False
+
+    def update_display(self, data):
+        self.display_widget.set_text("\n".join(data))
+
 
 def clean_shutdown(node_ids, bus):
     print("\nExiting... Resetting ODrives to position 0 and setting them to idle.")
@@ -63,8 +91,10 @@ def clean_shutdown(node_ids, bus):
     if bus is not None:
         bus.shutdown()
 
+
 def signal_handler(signal, frame):
     raise KeyboardInterrupt
+
 
 def handle_input(key, columns, sliders, loop, node_ids, bus):
     if key == 'esc':
@@ -83,17 +113,16 @@ def handle_input(key, columns, sliders, loop, node_ids, bus):
         focus = columns.focus_position
         columns.focus_position = max(0, min(len(sliders) - 1, focus + (1 if key == 'right' else -1)))
 
+
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     bus = can.interface.Bus("can0", bustype="socketcan")
-    node_ids = list(discover_node_ids(bus, discovery_duration=2))  # Convert to list
+    node_ids = list(discover_node_ids(bus, discovery_duration=2))
+    endpoints = load_endpoints()
 
-    # First 4 sliders are for individual ODrives
     sliders = [ODriveSlider([node_id], bus, -5, 5) for node_id in node_ids[:4]]
-
-    # Last 2 sliders: one for both ODrives moving together, one for differential motion
     sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, -25, 25))  # Unison movement
-    sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, -25, 25, differential=True))  # Differential movement
+    sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, -25, 25, differential=True))  # Differential
 
     for node_id in node_ids:
         if not set_closed_loop_control(bus, node_id):
@@ -101,17 +130,36 @@ def main():
             return
 
     columns = urwid.Columns([urwid.LineBox(slider) for slider in sliders])
-    frame = urwid.Frame(urwid.Filler(columns, valign='top'), footer=urwid.Text("Press ESC to exit", align='center'))
+    power_display = urwid.Text("Power Monitoring will appear here...", align='left')
 
-    loop = urwid.MainLoop(frame, palette=[('reversed', 'standout', '')], unhandled_input=lambda key: handle_input(key, columns, sliders, loop, node_ids, bus))
+    frame = urwid.Frame(
+        urwid.Pile([
+            urwid.Filler(columns, valign='top'),
+            urwid.LineBox(power_display, title="Power Monitor", title_align='center')
+        ]),
+        footer=urwid.Text("Press ESC to exit", align='center')
+    )
+
+    monitor = PowerMonitor(bus, node_ids, endpoints, power_display, update_interval=0.2)
+
+    loop = urwid.MainLoop(
+        frame,
+        palette=[('reversed', 'standout', '')],
+        unhandled_input=lambda key: handle_input(key, columns, sliders, loop, node_ids, bus)
+    )
 
     try:
+        from threading import Thread
+        monitor_thread = Thread(target=monitor.start_monitoring, daemon=True)
+        monitor_thread.start()
         loop.run()
     except KeyboardInterrupt:
         clean_shutdown(node_ids, bus)
     finally:
+        monitor.stop()
         if bus:
             bus.shutdown()
+
 
 if __name__ == "__main__":
     main()
