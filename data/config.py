@@ -41,13 +41,15 @@ config = {
             {"path": "axis0.config.can.bus_voltage_msg_rate_ms",        "value": 10},
 
             # Gains and limits
-            {"path": "axis0.controller.config.pos_gain",                "value": 180},   # proportional gain # stiffness
-            {"path": "axis0.controller.config.vel_gain",                "value": 5},  # derivative gain   # dampen overshoot
-            {"path": "axis0.controller.config.vel_integrator_gain",     "value": 2},  # integral gain     # adjust steady-state error
-            {"path": "axis0.trap_traj.config.vel_limit",                "value": 6},  
-            {"path": "axis0.trap_traj.config.accel_limit",              "value": 10},  
-            {"path": "axis0.trap_traj.config.decel_limit",              "value": 10}, 
-            {"path": "axis0.controller.config.inertia",                 "value": 0}     # moment of inertia # try 0.33 to start
+            {"path": "axis0.controller.config.pos_gain",                            "value": 180},   # proportional gain # stiffness
+            {"path": "axis0.controller.config.vel_gain",                            "value": 5},  # derivative gain   # dampen overshoot
+            {"path": "axis0.controller.config.vel_integrator_gain",                 "value": 2},  # integral gain     # adjust steady-state error
+            {"path": "axis0.trap_traj.config.vel_limit",                            "value": 6},  
+            {"path": "axis0.trap_traj.config.accel_limit",                          "value": 10},  
+            {"path": "axis0.trap_traj.config.decel_limit",                          "value": 10},
+            #{"path": "axis0.controller.config.inertia",                            "value": 0},
+            {"path": "axis0.controller.config.spinout_electrical_power_threshold",  "value": 9999},
+            {"path": "axis0.controller.config.spinout_mechanical_power_threshold",  "value": 9999}
         ]
     },
 

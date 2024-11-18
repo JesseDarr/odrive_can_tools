@@ -54,10 +54,20 @@ def write_config(bus, node_id, endpoint_id, endpoint_type, value):
     message_format = '<BHB' + format_lookup[endpoint_type]
     send_can_message(bus, node_id, RXSDO, message_format, WRITE, endpoint_id, 0, value)
 
-def validate_config(bus, node_id, endpoint_id, endpoint_type, expected_value):
-    # Validate a configuration value on an ODrive node
+def validate_config(bus, node_id, endpoint_id, endpoint_type, expected_value, tolerance=1e-2):
+    """
+    Validate a configuration value on an ODrive node with a tolerance.
+    """
     actual_value = read_config(bus, node_id, endpoint_id, endpoint_type)
-    return actual_value == expected_value
+
+    if actual_value is None:
+        print(f"[ERROR] Node {node_id} - No response for endpoint {endpoint_id}")
+        return False
+
+    if isinstance(expected_value, float):
+        return abs(actual_value - expected_value) <= tolerance
+    else:
+        return actual_value == expected_value
 
 def save_config(bus, node_id, save_endpoint_id):
     # Send a command to save the current configuration on an ODrive node
@@ -103,28 +113,36 @@ def clear_errors(bus, node_id, endpoints, clear=True):
             print(f"Endpoint {error_endpoint} not found in the provided endpoints.")
         print()            
 
-def set_odrive_parameter(bus, node_id, path, value, endpoints):
+def set_odrive_parameter(bus, node_id, path, value, endpoints, tolerance=1e-2):
     """
-    Sets a single parameter on an ODrive node.
+    Sets a single parameter on an ODrive node with validation.
     """
     endpoint_id = endpoints['endpoints'][path]['id']
     endpoint_type = endpoints['endpoints'][path]['type']
 
     current_value = read_config(bus, node_id, endpoint_id, endpoint_type)
-    if isinstance(current_value, float):
-        current_value = round(current_value, 4)
+    if current_value is None:
+        print(f"[ERROR] Node {node_id} - {path:50} - Failed to read current value.")
+        return False
 
-    if current_value != value:
-        write_config(bus, node_id, endpoint_id, endpoint_type, value)
-        if not validate_config(bus, node_id, endpoint_id, endpoint_type, value):
-            print(f"[ERROR] Node {node_id} - {path:50} - Value not updated: Expected {value}, Got {current_value}")
-            return False
-        else:
-            print(f"[INFO] Node {node_id} - {path:50} - Updated: {value}")
+    # Compare with tolerance for floats
+    if isinstance(current_value, float):
+        if abs(current_value - value) <= tolerance:
+            print(f"[INFO] Node {node_id} - {path:50} - Already set: {current_value:.6f}")
             return True
-    else:
+    elif current_value == value:
         print(f"[INFO] Node {node_id} - {path:50} - Already set: {current_value}")
         return True
+
+    # Write and validate
+    write_config(bus, node_id, endpoint_id, endpoint_type, value)
+    if not validate_config(bus, node_id, endpoint_id, endpoint_type, value, tolerance):
+        print(f"[ERROR] Node {node_id} - {path:50} - Update failed: Expected {value}, Got {current_value}")
+        return False
+
+    print(f"[INFO] Node {node_id} - {path:50} - Updated: {value}")
+    return True
+
 
 def setup_odrive(bus, node_id, settings, endpoints):
     """
