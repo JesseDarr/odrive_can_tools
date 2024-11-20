@@ -2,6 +2,7 @@
 import json
 import os
 import struct
+import time
 from src.can_utils import send_can_message, receive_can_message
 
 # Constants for ODrive CAN operations
@@ -38,16 +39,17 @@ def load_endpoints():
 
     return endpoints
 
-def read_config(bus, node_id, endpoint_id, endpoint_type):
-    # Read a configuration value from an ODrive node
+def read_config(bus, node_id, endpoint_id, endpoint_type, timeout=0.01):
+    start_time = time.time()
     send_can_message(bus, node_id, RXSDO, '<BHB', READ, endpoint_id, 0)
-    response = receive_can_message(bus, node_id << 5 | TXSDO)
-    if response:
-        _, _, _, value = struct.unpack_from('<BHB' + format_lookup[endpoint_type], response.data)
-        return value
-    else:
-        print("[ERROR] No response received in read_config.")
-        return None
+    
+    while time.time() - start_time < timeout:
+        response = receive_can_message(bus, node_id << 5 | TXSDO)
+        if response:
+            _, _, _, value = struct.unpack_from('<BHB' + format_lookup[endpoint_type], response.data)
+            return value
+    print("[ERROR] Timeout in read_config.")
+    return None
 
 def write_config(bus, node_id, endpoint_id, endpoint_type, value):
     # Send the CAN message
