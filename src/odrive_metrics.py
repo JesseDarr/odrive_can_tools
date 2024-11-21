@@ -23,5 +23,5 @@ def get_metrics(bus, node_id, endpoints):
             )
         except Exception as e:
             print(f"[ERROR] Failed to retrieve {metric_name} for node {node_id}: {e}")
-            metrics[metric_name] = None
+            metrics[metric_name] = "None"
     return metrics

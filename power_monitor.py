@@ -31,12 +31,12 @@ def monitor_odrive_power(stdscr, bus, node_ids, endpoints):
                 try:
                     metrics = get_metrics(bus, node_id, endpoints)
                     line = f"{node_id:<10} " + " ".join(
-                        [f"{(value if value is not None else 'Error'):<15.2f}" if isinstance(value, (int, float)) else "Error" for value in metrics.values()]
+                        [f"{value:<15.2f}" if isinstance(value, (int, float)) else str(value) for value in metrics.values()]
                     )
                     stdscr.addstr(row_offset, 0, line.ljust(len(header_row)))  # Pad to avoid overlapping
                 except Exception as e:
                     # Handle per-node errors to avoid stopping the loop
-                    error_message = f"{node_id:<10} {'Error reading metrics':<15}"
+                    error_message = f"{node_id:<10} Error reading metrics"
                     stdscr.addstr(row_offset, 0, error_message)
                 row_offset += 1
 
@@ -49,7 +49,6 @@ def monitor_odrive_power(stdscr, bus, node_ids, endpoints):
             stdscr.addstr(len(node_ids) + 3, 0, f"[ERROR] {e}".ljust(len(header_row)))
             stdscr.refresh()
             time.sleep(UPDATE_INTERVAL)
-
 
 def main():
     """

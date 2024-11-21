@@ -39,16 +39,13 @@ def load_endpoints():
 
     return endpoints
 
-def read_config(bus, node_id, endpoint_id, endpoint_type, timeout=0.01):
-    start_time = time.time()
+def read_config(bus, node_id, endpoint_id, endpoint_type):
     send_can_message(bus, node_id, RXSDO, '<BHB', READ, endpoint_id, 0)
-    
-    while time.time() - start_time < timeout:
-        response = receive_can_message(bus, node_id << 5 | TXSDO)
-        if response:
-            _, _, _, value = struct.unpack_from('<BHB' + format_lookup[endpoint_type], response.data)
-            return value
-    print("[ERROR] Timeout in read_config.")
+    response = receive_can_message(bus, node_id << 5 | TXSDO)
+
+    if response:
+        _, _, _, value = struct.unpack_from('<BHB' + format_lookup[endpoint_type], response.data)
+        return value
     return None
 
 def write_config(bus, node_id, endpoint_id, endpoint_type, value):
@@ -57,9 +54,6 @@ def write_config(bus, node_id, endpoint_id, endpoint_type, value):
     send_can_message(bus, node_id, RXSDO, message_format, WRITE, endpoint_id, 0, value)
 
 def validate_config(bus, node_id, endpoint_id, endpoint_type, expected_value, tolerance=1e-2):
-    """
-    Validate a configuration value on an ODrive node with a tolerance.
-    """
     actual_value = read_config(bus, node_id, endpoint_id, endpoint_type)
 
     if actual_value is None:
