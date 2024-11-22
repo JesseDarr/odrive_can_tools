@@ -26,7 +26,7 @@ def discover_node_ids(bus, discovery_duration=0.5):
         except can.CanError:
             pass
 
-    return node_ids
+    return list(node_ids)
 
 def send_can_message(bus, node_id, command_id, data_format, *data_args):
     """
@@ -48,7 +48,7 @@ def receive_can_message(bus, expected_arbitration_id):
     Receives a CAN message with a global timeout of 2 milliseconds.
     """
     start_time = time.time()
-    while time.time() - start_time < 0.010:
+    while time.time() - start_time < 0.05:
         try:
             msg = bus.recv(timeout=0)  # Explicit timeout per receive attempt
             if msg and msg.arbitration_id == expected_arbitration_id:

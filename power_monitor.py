@@ -5,7 +5,7 @@ from src.can_utils import discover_node_ids
 from src.odrive_configurator import load_endpoints
 from src.odrive_metrics import get_metrics
 
-UPDATE_INTERVAL = 0.2  # Update interval in seconds
+UPDATE_INTERVAL = 0.1  # Update interval in seconds
 
 def monitor_odrive_power(stdscr, bus, node_ids, endpoints):
     """
@@ -13,9 +13,6 @@ def monitor_odrive_power(stdscr, bus, node_ids, endpoints):
     """
     curses.curs_set(0)  # Hide the cursor
     stdscr.clear()
-
-    # Convert node_ids to a list for indexing
-    node_ids = list(node_ids)
 
     # Prepare headers
     metrics_sample = get_metrics(bus, node_ids[0], endpoints) if node_ids else {}
@@ -25,20 +22,24 @@ def monitor_odrive_power(stdscr, bus, node_ids, endpoints):
 
     while True:
         try:
-            # Update the data for each ODrive node
             row_offset = 2  # Start displaying data after the headers
             for node_id in node_ids:
                 try:
+                    # Retrieve metrics for the node
                     metrics = get_metrics(bus, node_id, endpoints)
+
+                    # Construct the display line with proper padding for each value
                     line = f"{node_id:<10} " + " ".join(
-                        [f"{value:<15.2f}" if isinstance(value, (int, float)) else str(value) for value in metrics.values()]
+                        [f"{value:<15.2f}" if isinstance(value, (int, float)) else f"{str(value):<15}" for value in metrics.values()]
                     )
-                    stdscr.addstr(row_offset, 0, line.ljust(len(header_row)))  # Pad to avoid overlapping
                 except Exception as e:
-                    # Handle per-node errors to avoid stopping the loop
-                    error_message = f"{node_id:<10} Error reading metrics"
-                    stdscr.addstr(row_offset, 0, error_message)
-                row_offset += 1
+                    # Handle per-node errors by displaying a clear error message
+                    line = f"{node_id:<10} {'Error reading metrics':<30}"  # Adjusted padding for consistency
+
+                # Write the line to the curses interface, explicitly clearing any previous content
+                stdscr.addstr(row_offset, 0, line.ljust(len(header_row)))  # Pad to avoid overlapping
+                stdscr.clrtoeol()  # Clear any remaining characters on the row
+                row_offset += 1  # Increment for the next node
 
             stdscr.refresh()
             time.sleep(UPDATE_INTERVAL)

@@ -12,16 +12,16 @@ def main():
         config_data = load_configuration()
         endpoints = load_endpoints()
 
-        # Iterate through each node and assign appropriate motor settings
-        for idx, node_id in enumerate(node_ids):
-            print(f"Configuring node {node_id}")
-            
-            # Apply 8308 settings for the first 4 nodes, GB36 settings for the last 2 nodes
-            if idx < 4:
-                config_settings = config_data["8308"]["settings"]
-            else:
-                config_settings = config_data["GB36"]["settings"]
+        # Iterate through each node and assign motor settings dynamically
+        for node_id in node_ids:
+            # Determine motor type using pole pairs
+            motor_type = get_motor_type(bus, node_id, endpoints)
 
+            # Log which node is being configured and its motor type
+            print(f"Configuring node {node_id} with motor type {motor_type}")
+
+            # Apply configuration settings for the detected motor type
+            config_settings = config_data[motor_type]["settings"]
             if not setup_odrive(bus, node_id, config_settings, endpoints):
                 print("Exiting due to an error in configuring a node.")
                 return
