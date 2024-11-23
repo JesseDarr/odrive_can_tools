@@ -13,12 +13,12 @@ config = {
             # Motor settings
             {"path": "axis0.config.motor.motor_type",                   "value": 0},  
             {"path": "axis0.config.motor.pole_pairs",                   "value": 20},  
-            {"path": "axis0.config.motor.torque_constant",              "value": 0.92}, 
+            {"path": "axis0.config.motor.torque_constant",              "value": 0.106}, 
             {"path": "axis0.config.motor.current_soft_max",             "value": 25},  
             {"path": "axis0.config.motor.calibration_current",          "value": 18},  
             {"path": "axis0.config.motor.resistance_calib_max_voltage", "value": 5},  
             {"path": "axis0.config.calibration_lockin.current",         "value": 18},  
-            {"path": "axis0.config.calib_range",                        "value": 0.02},
+            {"path": "axis0.config.calib_range",                        "value": 0.02}, # distance in radians motor will move during calibration
 
             # Control bandwidths
             {"path": "axis0.config.encoder_bandwidth",                  "value": 1000},
@@ -41,15 +41,15 @@ config = {
             {"path": "axis0.config.can.bus_voltage_msg_rate_ms",        "value": 10},
 
             # Gains and limits
-            {"path": "axis0.controller.config.pos_gain",                            "value": 180},   # proportional gain # stiffness
-            {"path": "axis0.controller.config.vel_gain",                            "value": 5},  # derivative gain   # dampen overshoot
-            {"path": "axis0.controller.config.vel_integrator_gain",                 "value": 2},  # integral gain     # adjust steady-state error
+            {"path": "axis0.controller.config.pos_gain",                            "value": 150},   # proportional gain # stiffness
+            {"path": "axis0.controller.config.vel_gain",                            "value": 0.55},  # derivative gain   # dampen overshoot
+            {"path": "axis0.controller.config.vel_integrator_gain",                 "value": 0.22},  # integral gain     # adjust steady-state error
             {"path": "axis0.trap_traj.config.vel_limit",                            "value": 6},  
             {"path": "axis0.trap_traj.config.accel_limit",                          "value": 10},  
             {"path": "axis0.trap_traj.config.decel_limit",                          "value": 10},
             #{"path": "axis0.controller.config.inertia",                            "value": 0},
-            {"path": "axis0.controller.config.spinout_electrical_power_threshold",  "value": 9999},
-            {"path": "axis0.controller.config.spinout_mechanical_power_threshold",  "value": 9999}
+            {"path": "axis0.controller.config.spinout_electrical_power_threshold",  "value": 100},
+            {"path": "axis0.controller.config.spinout_mechanical_power_threshold",  "value": -100}
         ]
     },
 

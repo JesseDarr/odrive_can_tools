@@ -5,14 +5,8 @@ from src.odrive_control import set_idle_mode
 from src.can_utils import discover_node_ids, send_can_message
 
 CALIBRATION_STATE = 3  # AXIS_STATE_ENCODER_OFFSET_CALIBRATION
-IDLE_STATE = 1  # AXIS_STATE_IDLE
+IDLE_STATE        = 1  # AXIS_STATE_IDLE
 CLOSED_LOOP_STATE = 8  # AXIS_STATE_CLOSED_LOOP_CONTROL
-
-def prompt_user(message):
-    """
-    Waits for user input to proceed.
-    """
-    input(f"{message} Press Enter to continue...")
 
 def calibrate_motor(bus, node_id, endpoints):
     """

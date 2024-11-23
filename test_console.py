@@ -2,8 +2,11 @@ import time
 import can
 import urwid
 import signal
+from threading import Thread
 from src.can_utils import discover_node_ids
 from src.odrive_control import set_closed_loop_control, move_odrive_to_position, set_idle_mode
+from src.odrive_metrics import get_metrics, METRIC_ENDPOINTS
+from src.odrive_configurator import load_endpoints
 
 class ODriveSlider(urwid.WidgetWrap):
     def __init__(self, node_ids, bus, min_val, max_val, differential=False):
@@ -71,10 +74,46 @@ def handle_input(key, columns, sliders, node_ids, bus):
         elif key == 'left' and focus > 0:
             columns.focus_position -= 1
 
+def update_metrics_textbox(bus, node_ids, endpoints, metrics_text, loop):
+    """
+    Continuously update the metrics display with dynamically determined column widths for each metric.
+    """
+    # Dynamically calculate the column width for each metric
+    column_widths = {
+        metric: max(len(metric), 4) + 3  # Enforce minimum length of 4, plus padding of 3
+        for metric in METRIC_ENDPOINTS.keys()
+    }
+
+    # Add a fixed width for the 'Node' column
+    node_column_width = 6  # "Node" + padding
+
+    # Prepare the header row
+    header = f"{'Node':<{node_column_width}}" + "".join(
+        f"{name:<{column_widths[name]}}" for name in METRIC_ENDPOINTS.keys()
+    )
+
+    while True:
+        lines = [header]
+        for node_id in node_ids:
+            metrics = get_metrics(bus, node_id, endpoints)
+
+            # Prepare row with values aligned under each header column
+            line = f"{node_id:<{node_column_width}}" + "".join(
+                f"{(' ' if value >= 0 else '') + f'{value:.2f}':<{column_widths[metric]}}" if isinstance(value, (int, float)) else f"{'None':<{column_widths[metric]}}"
+                for metric, value in metrics.items()
+            )
+            lines.append(line)
+
+        # Update the textbox with the new lines
+        metrics_text.set_text("\n".join(lines))
+        time.sleep(0.1)
+        loop.draw_screen()
+
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     bus = can.interface.Bus("can0", bustype="socketcan")
     node_ids = list(discover_node_ids(bus, discovery_duration=2))
+    endpoints = load_endpoints()
 
     # Sliders for individual and differential motion
     sliders = [ODriveSlider([node_id], bus, -5, 5) for node_id in node_ids[:4]]
@@ -89,9 +128,13 @@ def main():
 
     # Create UI layout
     columns = urwid.Columns([urwid.LineBox(slider) for slider in sliders])
-    frame = urwid.Frame(urwid.Filler(columns, valign='top'), footer=urwid.Text("Press ESC to exit", align='center'))
-    loop = urwid.MainLoop(frame, palette=[('reversed', 'standout', '')],
-                          unhandled_input=lambda key: handle_input(key, columns, sliders, node_ids, bus))
+    metrics_text = urwid.Text("Fetching metrics...", align='left')
+    pile = urwid.Pile([columns, metrics_text])  # Combine columns and metrics_text in a pile
+    frame = urwid.Frame(urwid.Filler(pile, valign='top'), footer=urwid.Text("Press ESC to exit", align='center'))
+    loop = urwid.MainLoop(frame, palette=[('reversed', 'standout', '')], unhandled_input=lambda key: handle_input(key, columns, sliders, node_ids, bus))
+
+    # Start metrics update thread
+    Thread(target=update_metrics_textbox, args=(bus, node_ids, endpoints, metrics_text, loop), daemon=True).start()
 
     try:
         loop.run()
