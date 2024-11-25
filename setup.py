@@ -1,12 +1,12 @@
 import can
 from src.can_utils import discover_node_ids
-from src.odrive_configurator import *
+from src.configure import *
 
 def main():
     bus = None
     try:
         bus = can.interface.Bus("can0", bustype="socketcan")
-        node_ids = discover_node_ids(bus, discovery_duration=2)
+        node_ids = discover_node_ids(bus)
 
         # Load configuration and endpoints
         config_data = load_configuration()

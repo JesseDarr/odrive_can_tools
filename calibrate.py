@@ -1,12 +1,19 @@
 import time
 import can
-from src.odrive_configurator import load_endpoints, read_config
-from src.odrive_control import set_idle_mode
+from src.configure import load_endpoints, read_config
+from src.control import set_idle_mode
 from src.can_utils import discover_node_ids, send_can_message
 
-CALIBRATION_STATE = 3  # AXIS_STATE_ENCODER_OFFSET_CALIBRATION
-IDLE_STATE        = 1  # AXIS_STATE_IDLE
-CLOSED_LOOP_STATE = 8  # AXIS_STATE_CLOSED_LOOP_CONTROL
+# ODrive states mapped to descriptions
+ODRIVE_STATES = {
+    1: "IDLE",
+    2: "STARTUP_SEQUENCE",
+    3: "FULL_CALIBRATION",
+    4: "MOTOR_CALIBRATION",
+    6: "ENCODER_INDEX_SEARCH",
+    7: "ENCODER_OFFSET_CALIBRATION",
+    8: "CLOSED_LOOP_CONTROL",
+}
 
 def calibrate_motor(bus, node_id, endpoints):
     """
@@ -16,7 +23,7 @@ def calibrate_motor(bus, node_id, endpoints):
         print(f"Starting calibration for node {node_id}...")
 
         # Send calibration command
-        send_can_message(bus, node_id, 0x07, '<I', CALIBRATION_STATE)
+        send_can_message(bus, node_id, 0x07, '<I', 3)  # Command for full calibration
 
         # Endpoint details for axis0.current_state
         state_endpoint_id = endpoints["endpoints"]["axis0.current_state"]["id"]
@@ -29,13 +36,16 @@ def calibrate_motor(bus, node_id, endpoints):
         while time.time() - start_time < timeout:
             # Query the current state
             state = read_config(bus, node_id, state_endpoint_id, state_endpoint_type)
-            if state == IDLE_STATE:
+
+            # Map the state to a human-readable description
+            state_description = ODRIVE_STATES.get(state, "UNKNOWN")
+
+            if state == 1:  # Referencing "IDLE" state directly from ODRIVE_STATES
                 print(f"Node {node_id} calibration completed successfully.")
                 return True
-            elif state == CALIBRATION_STATE:
-                print(f"Node {node_id} is still calibrating...")
             else:
-                print(f"[INFO] Node {node_id} is in unexpected state {state}. Waiting...")
+                print(f"[INFO] Node {node_id} is in state {state_description} (State Code: {state}). Waiting...")
+
             time.sleep(1)  # Poll every second
 
         print(f"[ERROR] Node {node_id} did not complete calibration within {timeout} seconds.")

@@ -3,7 +3,7 @@ import json
 import can
 import sys
 from src.can_utils import discover_node_ids
-from src.odrive_configurator import load_endpoints, clear_errors
+from src.configure import load_endpoints, clear_errors
 
 def main():
     # Argument parser to handle flags

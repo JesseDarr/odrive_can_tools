@@ -1,4 +1,4 @@
-from src.odrive_configurator import read_config
+from src.configure import read_config
 
 # Metric endpoints for extensibility
 METRIC_ENDPOINTS = {
@@ -14,7 +14,7 @@ METRIC_ENDPOINTS = {
     "mech_pwr (W)":  "axis0.motor.mechanical_power", 
     "elec_pwr (W)":  "axis0.motor.electrical_power", 
     "armed":         "axis0.is_armed",               
-    "disarm_msg":    "axis0.disarm_reason"           
+    "disarm_msg":    "axis0.disarm_reason"
 }
 
 def get_metrics(bus, node_id, endpoints):

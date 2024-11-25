@@ -2,7 +2,6 @@
 import json
 import os
 import struct
-import time
 from src.can_utils import send_can_message, receive_can_message
 
 # Constants for ODrive CAN operations
