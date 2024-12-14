@@ -132,10 +132,21 @@ def main():
     node_ids = list(discover_node_ids(bus))
     endpoints = load_endpoints()  # Load endpoints to pass into sliders
 
-    # Sliders for individual and differential motion
-    sliders = [ODriveSlider([node_id], bus, endpoints, -5, 5) for node_id in node_ids[:4]]
-    sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, endpoints, -25, 25))  # Unison
-    sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, endpoints, -25, 25, differential=True))  # Differential
+    if not node_ids:
+        print("No ODrives detected on the CAN network. Exiting.")
+        return
+
+    # Sliders for individual motion or differential motion
+    sliders = []
+
+    if len(node_ids) == 6:
+        # If all 6 ODrives are present, create 4 individual sliders and 2 differential sliders
+        sliders.extend([ODriveSlider([node_id], bus, endpoints, -5, 5) for node_id in node_ids[:4]])
+        sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, endpoints, -25, 25))  # Unison
+        sliders.append(ODriveSlider([node_ids[4], node_ids[5]], bus, endpoints, -25, 25, differential=True))  # Differential
+    else:
+        # If less than 6 ODrives, create individual sliders for all nodes
+        sliders.extend([ODriveSlider([node_id], bus, endpoints, -5, 5) for node_id in node_ids])
 
     # Set closed-loop control for all nodes
     for node_id in node_ids:
