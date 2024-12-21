@@ -9,7 +9,6 @@ from src.metrics import get_metrics, METRIC_ENDPOINTS
 from src.configure import load_endpoints
 
 class ForearmController:
-
     def __init__(self, bus, node_id_pair, endpoints):
         self.bus = bus
         self.node_id_pair = node_id_pair   # e.g. [4, 5]
@@ -179,7 +178,7 @@ def main():
     if len(node_ids) == 6:
         # Single motor sliders for first 4 nodes
         for node_id in node_ids[:4]:
-            sliders.append(ODriveSlider([node_id], bus, endpoints, -5, 5))
+            sliders.append(ODriveSlider([node_id], bus, endpoints, -4.8, 4.8))
 
         # Last 2 nodes form the "forearm" pair
         forearm_node_pair = [node_ids[4], node_ids[5]]
@@ -211,7 +210,7 @@ def main():
     else:
         # If fewer or more than 6, just create an individual slider for each node
         for node_id in node_ids:
-            sliders.append(ODriveSlider([node_id], bus, endpoints, -5, 5))
+            sliders.append(ODriveSlider([node_id], bus, endpoints, -4.8, 4.8))
 
     columns = urwid.Columns([urwid.LineBox(slider) for slider in sliders])
     metrics_text = urwid.Text("Fetching metrics...", align='left')
