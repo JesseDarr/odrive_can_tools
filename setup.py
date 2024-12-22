@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import can
 from src.can_utils import discover_node_ids
 from src.configure import *

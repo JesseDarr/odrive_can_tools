@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import time
 import can
 from src.configure import load_endpoints, read_config
