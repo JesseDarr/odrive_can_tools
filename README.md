@@ -16,11 +16,13 @@ These tools provide functionality for interacting with ODrive devices via a CAN 
 ## Project Structure
 ```plaintext
 tools/
-├── README.md
-├── calibrate.py
-├── clear_errors.py
-├── setup.py
-├── test_console.py
+├── README.md           
+├── calibrate.py            - Calibrates ODrives
+├── clear_errors.py         - Clears ODrive errors
+├── console.py              - TUI test console to control motors
+├── convert_id.py           - Changes ODrive node ids
+├── gamecontroller.py       - Game controller console to control motors
+├── setup.py                - Applies config.py values to all ODrives
 ├── data
 │   ├── config.py           - Configuration settings for ODrive devices.
 │   └── flat_endpoints.json - Detailed list of ODrive firmware endpoints.
