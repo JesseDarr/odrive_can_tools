@@ -23,14 +23,15 @@ tools/
 ├── convert_id.py           - Changes ODrive node ids
 ├── gamecontroller.py       - Game controller console to control motors
 ├── setup.py                - Applies config.py values to all ODrives
+├── velocity.py             - Very dengerous, do not use!!! only use to lube joint 0
 ├── data
-│   ├── config.py           - Configuration settings for ODrive devices.
-│   └── flat_endpoints.json - Detailed list of ODrive firmware endpoints.
+│   ├── config.py           - Configuration settings for ODrive devices
+│   └── flat_endpoints.json - Detailed list of ODrive firmware endpoints
 └── src
-    ├── can_utils.py        - Utility functions for CAN communication.
-    ├── configure.py        - Applies configurations to ODrive devices.
-    ├── control.py          - Interfaces for control actions on ODrive devices.
-    └── metrics.py          - Polls a variety of ODrive metrics.    
+    ├── can_utils.py        - Utility functions for CAN communication
+    ├── configure.py        - Applies configurations to ODrive devices
+    ├── control.py          - Interfaces for control actions on ODrive devices
+    └── metrics.py          - Polls a variety of ODrive metrics    
 ```
 
 ## Configuration
