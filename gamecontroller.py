@@ -40,8 +40,8 @@ JOINT1_MIN, JOINT1_MAX =  -5,    0  # node1,2 (shoulder), if needed
 JOINT2_MIN, JOINT2_MAX =  -5,    5  # node3
 JOINT3_MIN, JOINT3_MAX =  -6,    0  # node4
 
-FOREARM_UNISON_MIN, FOREARM_UNISON_MAX = -25.0, 25.0
-FOREARM_DIFF_MIN,   FOREARM_DIFF_MAX   = -25.0, 25.0
+FOREARM_UNISON_MIN, FOREARM_UNISON_MAX = -25, 25
+FOREARM_DIFF_MIN,   FOREARM_DIFF_MAX   = -25, 25
 
 stop_event = threading.Event()
 

@@ -85,7 +85,7 @@ config = {
             {"path": "axis0.controller.config.input_mode",              "value": 5},
             {"path": "axis0.controller.config.control_mode",            "value": 3},  
             {"path": "axis0.controller.config.input_filter_bandwidth",  "value": 20},  
-            {"path": "axis0.controller.config.vel_limit",               "value": 12},  
+            {"path": "axis0.controller.config.vel_limit",               "value": 100},  
             {"path": "axis0.controller.config.vel_limit_tolerance",     "value": 1.35},  
             
             # CAN settings
@@ -101,9 +101,9 @@ config = {
             {"path": "axis0.controller.config.pos_gain",                "value": 50},  
             {"path": "axis0.controller.config.vel_gain",                "value": 0.04},
             {"path": "axis0.controller.config.vel_integrator_gain",     "value": 0.004}, 
-            {"path": "axis0.trap_traj.config.vel_limit",                "value": 6},  
-            {"path": "axis0.trap_traj.config.accel_limit",              "value": 20},  
-            {"path": "axis0.trap_traj.config.decel_limit",              "value": 20}, 
+            {"path": "axis0.trap_traj.config.vel_limit",                "value": 100},  
+            {"path": "axis0.trap_traj.config.accel_limit",              "value": 40},  
+            {"path": "axis0.trap_traj.config.decel_limit",              "value": 40}, 
             {"path": "axis0.controller.config.inertia",                 "value": 0}
         ]
     }
