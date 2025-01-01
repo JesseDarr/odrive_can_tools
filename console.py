@@ -6,14 +6,39 @@ import urwid
 import signal
 from threading import Thread
 from src.can_utils import discover_node_ids
-from src.control import *
+from src.control import move_odrive_to_position, set_closed_loop_control, set_idle_mode
 from src.metrics import get_metrics, METRIC_ENDPOINTS
 from src.configure import load_endpoints
 
-class ForearmController:
+
+class ShoulderController:
+    """
+    Controls two ODrives on the same joint, with motors facing opposite directions.
+    A single "shoulder_val" from the slider means motorA -> +val, motorB -> -val.
+    """
     def __init__(self, bus, node_id_pair, endpoints):
         self.bus = bus
-        self.node_id_pair = node_id_pair   # e.g. [4, 5]
+        self.node_id_pair = node_id_pair   # e.g. [1, 2]
+        self.endpoints = endpoints
+        self.shoulder_val = 0.0
+
+    def apply_shoulder_values(self):
+        nodeA, nodeB = self.node_id_pair
+        motorA_target = -self.shoulder_val
+        motorB_target = self.shoulder_val
+
+        move_odrive_to_position(self.bus, nodeA, motorA_target)
+        move_odrive_to_position(self.bus, nodeB, motorB_target)
+
+
+class ForearmController:
+    """
+    Existing controller for a forearm that has "unison" and "diff" sliders.
+    Now for node [5, 6].
+    """
+    def __init__(self, bus, node_id_pair, endpoints):
+        self.bus = bus
+        self.node_id_pair = node_id_pair   # e.g. [5, 6]
         self.endpoints = endpoints
         self.unison_val = 0.0
         self.diff_val = 0.0
@@ -23,18 +48,20 @@ class ForearmController:
         motorA_target = self.unison_val + self.diff_val
         motorB_target = self.unison_val - self.diff_val
 
-        # Because control mode is always position, we just move to position:
         move_odrive_to_position(self.bus, nodeA, motorA_target)
         move_odrive_to_position(self.bus, nodeB, motorB_target)
 
 
 class ODriveSlider(urwid.WidgetWrap):
+    """
+    General slider for controlling either:
+      - A single ODrive or normal pair of ODrives,
+      - A shared ForearmController in 'unison'/'diff' mode (node5,6),
+      - A shared ShoulderController in 'shoulder' mode (node1,2).
+    """
     def __init__(self, node_ids, bus, endpoints, min_val, max_val,
-                 shared_forearm=None, forearm_mode=None):
-        """
-        If 'shared_forearm' is None, this slider controls one or more motors normally.
-        If it's not None, 'forearm_mode' is 'unison' or 'diff'. 
-        """
+                 shared_forearm=None, forearm_mode=None,
+                 shared_shoulder=None):
         self.node_ids = node_ids
         self.bus = bus
         self.endpoints = endpoints
@@ -43,30 +70,33 @@ class ODriveSlider(urwid.WidgetWrap):
         self.value = 0.0
 
         self.shared_forearm = shared_forearm
-        self.forearm_mode = forearm_mode  # can be None, 'unison', or 'diff'
+        self.forearm_mode = forearm_mode  # 'unison', 'diff', or None
 
-        # Slider label text
-        if self.forearm_mode == 'unison':
+        self.shared_shoulder = shared_shoulder  # If not None => shoulder joint
+
+        # Decide a label based on the mode
+        if self.shared_shoulder:
+            label_text = f"Shoulder (Nodes {node_ids[0]}, {node_ids[1]}): {self.value:.1f}"
+        elif self.shared_forearm and self.forearm_mode == 'unison':
             label_text = f"Forearm UNISON: {self.value:.1f}"
-        elif self.forearm_mode == 'diff':
+        elif self.shared_forearm and self.forearm_mode == 'diff':
             label_text = f"Forearm DIFF: {self.value:.1f}"
         else:
             label_text = f"ODrive {', '.join(map(str, self.node_ids))}: {self.value:.1f}"
-        self.label = urwid.Text(label_text)
 
+        self.label = urwid.Text(label_text)
         self.pile = urwid.Pile([self.label])
-        self._w = urwid.AttrMap(self.pile, None, focus_map='reversed')
+        super().__init__(urwid.AttrMap(self.pile, None, focus_map='reversed'))
 
     def update_value(self, increment):
-        """
-        Adjust slider value on arrow key press.
-        """
         self.value = max(self.min_val, min(self.max_val, self.value + increment))
 
         # Update label
-        if self.forearm_mode == 'unison':
+        if self.shared_shoulder:
+            self.label.set_text(f"Shoulder (Nodes {self.node_ids[0]}, {self.node_ids[1]}): {self.value:.1f}")
+        elif self.shared_forearm and self.forearm_mode == 'unison':
             self.label.set_text(f"Forearm UNISON: {self.value:.1f}")
-        elif self.forearm_mode == 'diff':
+        elif self.shared_forearm and self.forearm_mode == 'diff':
             self.label.set_text(f"Forearm DIFF: {self.value:.1f}")
         else:
             self.label.set_text(f"ODrive {', '.join(map(str, self.node_ids))}: {self.value:.1f}")
@@ -74,46 +104,44 @@ class ODriveSlider(urwid.WidgetWrap):
         self.move_motor()
 
     def move_motor(self):
-        """
-        If slider is part of the forearm, we update the shared ForearmController
-        and call apply_forearm_values(). Otherwise, move the motor(s) directly.
-        """
+        # If forearm, set unison/diff
         if self.shared_forearm and self.forearm_mode in ['unison', 'diff']:
             if self.forearm_mode == 'unison':
                 self.shared_forearm.unison_val = self.value
-            else:  # 'diff'
+            else:
                 self.shared_forearm.diff_val = self.value
-
-            # Apply combined forearm values now
             self.shared_forearm.apply_forearm_values()
 
+        # If shoulder, set the single "shoulder_val"
+        elif self.shared_shoulder:
+            self.shared_shoulder.shoulder_val = self.value
+            self.shared_shoulder.apply_shoulder_values()
+
         else:
-            # Single or pair of motors in normal mode
+            # Single or normal pair
             for node_id in self.node_ids:
                 move_odrive_to_position(self.bus, node_id, self.value)
 
 
 def clean_shutdown(node_ids, bus):
-    print("\nExiting... Resetting ODrives to position 0 and setting them to idle.")
-    for node_id in node_ids:
-        move_odrive_to_position(bus, node_id, 0)
+    print("\nExiting... resetting ODrives to position 0 and setting them to idle.")
+    for nd in node_ids:
+        move_odrive_to_position(bus, nd, 0)
     time.sleep(2)
-    for node_id in node_ids:
-        set_idle_mode(bus, node_id)
+    for nd in node_ids:
+        set_idle_mode(bus, nd)
     if bus:
         bus.shutdown()
 
-def signal_handler(signal, frame):
+def signal_handler(sig, frame):
     raise KeyboardInterrupt
 
 def handle_input(key, columns, sliders, node_ids, bus):
-    """
-    Keybindings: up/down to adjust slider value, left/right to switch slider focus, ESC to exit.
-    """
     if key == 'esc':
         clean_shutdown(node_ids, bus)
         raise urwid.ExitMainLoop()
     elif key in ('up', 'down'):
+        # Adjust the slider value
         focus = columns.focus_position
         slider = sliders[focus]
         increment = 0.1 if key == 'up' else -0.1
@@ -126,26 +154,30 @@ def handle_input(key, columns, sliders, node_ids, bus):
             columns.focus_position -= 1
 
 def update_metrics_textbox(bus, node_ids, endpoints, metrics_text, loop):
-    """
-    Background thread updates the metrics display periodically.
-    """
     column_widths = {
         metric: max(len(metric), 4) + 3
         for metric in METRIC_ENDPOINTS.keys()
     }
-    node_column_width = 6
-    header = f"{'Node':<{node_column_width}}" + "".join(
+    node_col_width = 6
+
+    # Build the header line
+    header = f"{'Node':<{node_col_width}}" + "".join(
         f"{name:<{column_widths[name]}}" for name in METRIC_ENDPOINTS.keys()
     )
 
     while True:
         lines = [header]
-        for node_id in node_ids:
-            metrics = get_metrics(bus, node_id, endpoints)
-            line = f"{node_id:<{node_column_width}}" + "".join(
-                f"{(' ' if isinstance(value, (float,int)) and value >= 0 else '') + f'{value:.2f}' if isinstance(value, (float,int)) else f'{value}':<{column_widths[metric]}}"
-                for metric, value in metrics.items()
-            )
+        for nd in node_ids:
+            metrics = get_metrics(bus, nd, endpoints)
+            line = f"{nd:<{node_col_width}}"
+            for metric, val in metrics.items():
+                if isinstance(val, (float,int)):
+                    sign_space = ' ' if val >= 0 else ''
+                    formatted_val = f"{sign_space}{val:.2f}"
+                    line += f"{formatted_val:<{column_widths[metric]}}"
+                else:
+                    # If None or non-numeric => show "None"
+                    line += f"{'None':<{column_widths[metric]}}"
             lines.append(line)
 
         metrics_text.set_text("\n".join(lines))
@@ -162,33 +194,50 @@ def main():
         print("No ODrives detected on the CAN network. Exiting.")
         return
 
-    # Sort for consistent ordering
     node_ids.sort()
     print(f"Detected ODrive Node IDs: {node_ids}")
 
-    # Force each discovered node to CLOSED_LOOP_CONTROL with position mode
-    for node_id in node_ids:
-        if not set_closed_loop_control(bus, node_id):
-            print(f"[ERROR] Could not set node {node_id} to CLOSED_LOOP_CONTROL. Exiting.")
+    # Set each discovered node to CLOSED_LOOP_CONTROL
+    for nd in node_ids:
+        if not set_closed_loop_control(bus, nd):
+            print(f"[ERROR] Could not set node {nd} to CLOSED_LOOP_CONTROL. Exiting.")
             bus.shutdown()
             return
 
-    # Build UI sliders
+    # Build your sliders logic
     sliders = []
 
-    # Example: If you have exactly 6 Node IDs
-    if len(node_ids) == 6:
-        # Single motor sliders for first 4 nodes
-        for node_id in node_ids[:4]:
-            sliders.append(ODriveSlider([node_id], bus, endpoints, -4.8, 4.8))
+    # Single slider for node 0 (if present)
+    if 0 in node_ids:
+        sliders.append(ODriveSlider([0], bus, endpoints, -4.8, 4.8))
 
-        # Last 2 nodes form the "forearm" pair
-        forearm_node_pair = [node_ids[4], node_ids[5]]
-        forearm_ctrl = ForearmController(bus, forearm_node_pair, endpoints)
+    # Shoulder: node1,2 => 1 slider with ShoulderController
+    if 1 in node_ids and 2 in node_ids:
+        shoulder_ctrl = ShoulderController(bus, [1, 2], endpoints)
+        slider_shoulder = ODriveSlider(
+            [1, 2],
+            bus,
+            endpoints,
+            min_val=-4.8,
+            max_val=4.8,
+            shared_shoulder=shoulder_ctrl
+        )
+        sliders.append(slider_shoulder)
 
-        # Slider #5: Unison
-        unison_slider = ODriveSlider(
-            forearm_node_pair,    # node pair
+    # Single slider for node 3
+    if 3 in node_ids:
+        sliders.append(ODriveSlider([3], bus, endpoints, -4.8, 4.8))
+
+    # Single slider for node 4
+    if 4 in node_ids:
+        # new single motor we introduced
+        sliders.append(ODriveSlider([4], bus, endpoints, -4.8, 4.8))
+
+    # Forearm: node5,6 => unison/diff
+    if 5 in node_ids and 6 in node_ids:
+        forearm_ctrl = ForearmController(bus, [5, 6], endpoints)
+        slider_unison = ODriveSlider(
+            [5, 6],
             bus,
             endpoints,
             min_val=-25,
@@ -196,9 +245,8 @@ def main():
             shared_forearm=forearm_ctrl,
             forearm_mode='unison'
         )
-        # Slider #6: Differential
-        diff_slider = ODriveSlider(
-            forearm_node_pair,    # node pair
+        slider_diff = ODriveSlider(
+            [5, 6],
             bus,
             endpoints,
             min_val=-25,
@@ -206,15 +254,10 @@ def main():
             shared_forearm=forearm_ctrl,
             forearm_mode='diff'
         )
-        sliders.append(unison_slider)
-        sliders.append(diff_slider)
+        sliders.append(slider_unison)
+        sliders.append(slider_diff)
 
-    else:
-        # If fewer or more than 6, just create an individual slider for each node
-        for node_id in node_ids:
-            sliders.append(ODriveSlider([node_id], bus, endpoints, -4.8, 4.8))
-
-    columns = urwid.Columns([urwid.LineBox(slider) for slider in sliders])
+    columns = urwid.Columns([urwid.LineBox(s) for s in sliders])
     metrics_text = urwid.Text("Fetching metrics...", align='left')
     pile = urwid.Pile([columns, metrics_text])
     frame = urwid.Frame(
@@ -225,7 +268,7 @@ def main():
     loop = urwid.MainLoop(
         frame,
         palette=[('reversed', 'standout', '')],
-        unhandled_input=lambda key: handle_input(key, columns, sliders, node_ids, bus)
+        unhandled_input=lambda k: handle_input(k, columns, sliders, node_ids, bus)
     )
 
     # Start metrics update thread
