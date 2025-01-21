@@ -158,25 +158,3 @@ def setup_odrive(bus, node_id, settings, endpoints):
     except Exception as e:
         print(f"[ERROR] Unexpected error during ODrive setup: {e}")
         return False
-
-def get_motor_type(bus, node_id, endpoints):
-    """
-    Determine the motor type based on the pole pairs configured on the ODrive node.
-    """
-    try:
-        pole_pairs = read_config(
-            bus,
-            node_id,
-            endpoints["endpoints"]["axis0.config.motor.pole_pairs"]["id"],
-            endpoints["endpoints"]["axis0.config.motor.pole_pairs"]["type"]
-        )
-        if pole_pairs == 20:
-            return "8308"
-        elif pole_pairs == 7:
-            return "GB36"
-        else:
-            print(f"[WARNING] Unexpected pole pairs value {pole_pairs} for node {node_id}.")
-            return None
-    except Exception as e:
-        print(f"[ERROR] Failed to retrieve motor type for node {node_id}: {e}")
-        return None
