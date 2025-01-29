@@ -62,7 +62,7 @@ config = {
             {"path": "config.dc_bus_overvoltage_trip_level",            "value": 50}, 
             {"path": "config.dc_bus_undervoltage_trip_level",           "value": 20}, 
             {"path": "config.dc_max_positive_current",                  "value": 5},  
-            {"path": "config.brake_resistor0.enable",                   "value": True},  
+            {"path": "config.brake_resistor0.enable",                   "value": False},  
             {"path": "config.brake_resistor0.resistance",               "value": 2},  
 
             # Motor settings
@@ -85,7 +85,7 @@ config = {
             {"path": "axis0.controller.config.input_mode",              "value": 5},
             {"path": "axis0.controller.config.control_mode",            "value": 3},  
             {"path": "axis0.controller.config.input_filter_bandwidth",  "value": 20},  
-            {"path": "axis0.controller.config.vel_limit",               "value": 100},  
+            {"path": "axis0.controller.config.vel_limit",               "value": 30},  
             {"path": "axis0.controller.config.vel_limit_tolerance",     "value": 1.35},  
             
             # CAN settings
@@ -98,12 +98,12 @@ config = {
             {"path": "axis0.config.can.bus_voltage_msg_rate_ms",        "value": 10},
             
             # Gains and limits
-            {"path": "axis0.controller.config.pos_gain",                "value": 50},  
+            {"path": "axis0.controller.config.pos_gain",                "value": 30},  
             {"path": "axis0.controller.config.vel_gain",                "value": 0.04},
             {"path": "axis0.controller.config.vel_integrator_gain",     "value": 0.004}, 
-            {"path": "axis0.trap_traj.config.vel_limit",                "value": 100},  
-            {"path": "axis0.trap_traj.config.accel_limit",              "value": 40},  
-            {"path": "axis0.trap_traj.config.decel_limit",              "value": 40}, 
+            {"path": "axis0.trap_traj.config.vel_limit",                "value": 30},  
+            {"path": "axis0.trap_traj.config.accel_limit",              "value": 20},  
+            {"path": "axis0.trap_traj.config.decel_limit",              "value": 20}, 
             {"path": "axis0.controller.config.inertia",                 "value": 0}
         ]
     },
@@ -116,7 +116,7 @@ config = {
             {"path": "config.dc_bus_overvoltage_trip_level",            "value": 50}, 
             {"path": "config.dc_bus_undervoltage_trip_level",           "value": 20}, 
             {"path": "config.dc_max_positive_current",                  "value": 5},  
-            {"path": "config.brake_resistor0.enable",                   "value": True},  
+            {"path": "config.brake_resistor0.enable",                   "value": False},  
             {"path": "config.brake_resistor0.resistance",               "value": 2},  
 
             # Motor settings

@@ -5,11 +5,17 @@ import can
 import urwid
 import signal
 from threading import Thread
+
 from src.can_utils import discover_node_ids
 from src.control import move_odrive_to_position, set_closed_loop_control, set_idle_mode
 from src.metrics import get_metrics, METRIC_ENDPOINTS
 from src.configure import load_endpoints
 
+# --------------------------------------
+# Step increments as constants
+# --------------------------------------
+INCREMENT_DEFAULT = 0.1
+INCREMENT_GRIPPER = 0.01
 
 class ShoulderController:
     """
@@ -33,12 +39,11 @@ class ShoulderController:
 
 class ForearmController:
     """
-    Existing controller for a forearm that has "unison" and "diff" sliders.
-    Now for node [5, 6].
+    Controller for a forearm that has "unison" and "diff" sliders (e.g. node [5, 6]).
     """
     def __init__(self, bus, node_id_pair, endpoints):
         self.bus = bus
-        self.node_id_pair = node_id_pair   # e.g. [5, 6]
+        self.node_id_pair = node_id_pair
         self.endpoints = endpoints
         self.unison_val = 0.0
         self.diff_val = 0.0
@@ -54,12 +59,12 @@ class ForearmController:
 
 class ODriveSlider(urwid.WidgetWrap):
     """
-    General slider for controlling either:
-      - A single ODrive or normal pair of ODrives,
-      - A shared ForearmController in 'unison'/'diff' mode (node5,6),
-      - A shared ShoulderController in 'shoulder' mode (node1,2).
+    General slider for controlling:
+      - A single ODrive (node_ids = [X]),
+      - A pair of ODrives in a special mode (shoulder or forearm).
     """
     def __init__(self, node_ids, bus, endpoints, min_val, max_val,
+                 step_size=INCREMENT_DEFAULT,  # <--- NEW
                  shared_forearm=None, forearm_mode=None,
                  shared_shoulder=None):
         self.node_ids = node_ids
@@ -68,6 +73,9 @@ class ODriveSlider(urwid.WidgetWrap):
         self.min_val = min_val
         self.max_val = max_val
         self.value = 0.0
+
+        # Step size (default = 0.1) or custom if specified
+        self.step_size = step_size
 
         self.shared_forearm = shared_forearm
         self.forearm_mode = forearm_mode  # 'unison', 'diff', or None
@@ -140,17 +148,23 @@ def handle_input(key, columns, sliders, node_ids, bus):
     if key == 'esc':
         clean_shutdown(node_ids, bus)
         raise urwid.ExitMainLoop()
+
     elif key in ('up', 'down'):
         # Adjust the slider value
         focus = columns.focus_position
         slider = sliders[focus]
-        increment = 0.1 if key == 'up' else -0.1
+
+        increment = slider.step_size
+        if key == 'down':
+            increment = -increment
+
         slider.update_value(increment)
+
     elif key in ('left', 'right'):
-        focus = columns.focus_position
-        if key == 'right' and focus < len(sliders) - 1:
+        # Navigate between sliders
+        if key == 'right' and columns.focus_position < len(sliders) - 1:
             columns.focus_position += 1
-        elif key == 'left' and focus > 0:
+        elif key == 'left' and columns.focus_position > 0:
             columns.focus_position -= 1
 
 def update_metrics_textbox(bus, node_ids, endpoints, metrics_text, loop):
@@ -171,7 +185,7 @@ def update_metrics_textbox(bus, node_ids, endpoints, metrics_text, loop):
             metrics = get_metrics(bus, nd, endpoints)
             line = f"{nd:<{node_col_width}}"
             for metric, val in metrics.items():
-                if isinstance(val, (float,int)):
+                if isinstance(val, (float, int)):
                     sign_space = ' ' if val >= 0 else ''
                     formatted_val = f"{sign_space}{val:.2f}"
                     line += f"{formatted_val:<{column_widths[metric]}}"
@@ -204,14 +218,13 @@ def main():
             bus.shutdown()
             return
 
-    # Build your sliders logic
     sliders = []
 
-    # Single slider for node 0 (if present)
+    # Single slider for node 0
     if 0 in node_ids:
         sliders.append(ODriveSlider([0], bus, endpoints, -4.8, 4.8))
 
-    # Shoulder: node1,2 => 1 slider with ShoulderController
+    # Shoulder: node 1,2
     if 1 in node_ids and 2 in node_ids:
         shoulder_ctrl = ShoulderController(bus, [1, 2], endpoints)
         slider_shoulder = ODriveSlider(
@@ -220,6 +233,7 @@ def main():
             endpoints,
             min_val=-4.8,
             max_val=4.8,
+            step_size=INCREMENT_DEFAULT,     # shoulder uses default 0.1
             shared_shoulder=shoulder_ctrl
         )
         sliders.append(slider_shoulder)
@@ -230,10 +244,9 @@ def main():
 
     # Single slider for node 4
     if 4 in node_ids:
-        # new single motor we introduced
         sliders.append(ODriveSlider([4], bus, endpoints, -4.8, 4.8))
 
-    # Forearm: node5,6 => unison/diff
+    # Forearm: node 5,6 => unison/diff
     if 5 in node_ids and 6 in node_ids:
         forearm_ctrl = ForearmController(bus, [5, 6], endpoints)
         slider_unison = ODriveSlider(
@@ -242,6 +255,7 @@ def main():
             endpoints,
             min_val=-25,
             max_val=25,
+            step_size=INCREMENT_DEFAULT,     # forearm uses default 0.1
             shared_forearm=forearm_ctrl,
             forearm_mode='unison'
         )
@@ -251,18 +265,31 @@ def main():
             endpoints,
             min_val=-25,
             max_val=25,
+            step_size=INCREMENT_DEFAULT,     # forearm uses default 0.1
             shared_forearm=forearm_ctrl,
             forearm_mode='diff'
         )
         sliders.append(slider_unison)
         sliders.append(slider_diff)
 
+    # Gripper (node 7, 5208): smaller increments
+    if 7 in node_ids:
+        # Example range might be narrower if the gripper doesn't move as far
+        sliders.append(ODriveSlider(
+            [7],
+            bus,
+            endpoints,
+            min_val=-0.1,
+            max_val=0.73,
+            step_size=INCREMENT_GRIPPER      # 0.01 increments
+        ))
+
     columns = urwid.Columns([urwid.LineBox(s) for s in sliders])
     metrics_text = urwid.Text("Fetching metrics...", align='left')
     pile = urwid.Pile([columns, metrics_text])
     frame = urwid.Frame(
         urwid.Filler(pile, valign='top'),
-        footer=urwid.Text("Press ESC to exit", align='center')
+        footer=urwid.Text("Press ESC to exit | Up/Down to change value | Left/Right to switch slider", align='center')
     )
 
     loop = urwid.MainLoop(
@@ -285,6 +312,7 @@ def main():
     finally:
         if bus:
             bus.shutdown()
+
 
 if __name__ == "__main__":
     main()

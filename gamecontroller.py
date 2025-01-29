@@ -18,16 +18,18 @@ from src.configure import load_endpoints
 DEAD_MAN_BUTTON_INDEX   = 4  # LB
 MODE_TOGGLE_BUTTON_INDEX = 5 # RB
 
-AXIS_LEFT_X  = 0  # Bend
-AXIS_LEFT_Y  = 1  # Rotate
-AXIS_RIGHT_X = 3
-AXIS_RIGHT_Y = 4
+AXIS_LEFT_X       = 0  # Bend
+AXIS_LEFT_Y       = 1  # Rotate
+AXIS_LEFT_TRIGGER = 2  # <--- New: Left Trigger
+AXIS_RIGHT_X      = 3
+AXIS_RIGHT_Y      = 4
+AXIS_RIGHT_TRIGGER= 5  # <--- New: Right Trigger
 
 UPDATE_RATE              = 30.0
 DEAD_ZONE                = 0.25
-VELOCITY_SCALING         = 3.0
-FOREARM_VELOCITY_SCALING = 2.0
-
+VELOCITY_SCALING         = 2.0
+FOREARM_VELOCITY_SCALING = 1.0
+GRIPPER_SCALING          = 0.5
 
 # ------------------------------------------------------------------------------
 # 2) Joint Range Definitions
@@ -35,18 +37,18 @@ FOREARM_VELOCITY_SCALING = 2.0
 #    Node(1,2) => Joint 1 (Shoulder)
 #    Node3 => Joint 2
 #    Node4 => Joint 3
-#    Node(5,6) => "Gripper" (bend + rotate)
+#    Node(5,6) => Gripper (bend + rotate)
+#    Node(7) => Gripper squeeze/release
 # ------------------------------------------------------------------------------
 JOINT0_MIN, JOINT0_MAX = -4.8,  4.8
 JOINT1_MIN, JOINT1_MAX = -5.0,  0.0
 JOINT2_MIN, JOINT2_MAX = -5.0,  5.0
-JOINT3_MIN, JOINT3_MAX = -6.0,  0.0
+JOINT3_MIN, JOINT3_MAX = -5.9,  0.0
 
-# --------------
-# Gripper config
-# --------------
-BEND_MIN,   BEND_MAX   =  -5.0, 5.0
-ROTATE_MIN, ROTATE_MAX = -10.0, 10.0
+
+BEND_MIN,   BEND_MAX     =  -5.0,  5.0
+ROTATE_MIN, ROTATE_MAX   = -10.0, 10.0
+TRIGGER_MIN, TRIGGER_MAX =  -0.05, 0.7
 
 stop_event = threading.Event()
 
@@ -57,7 +59,9 @@ joystick_states = {
         AXIS_LEFT_X:  0.0,
         AXIS_LEFT_Y:  0.0,
         AXIS_RIGHT_X: 0.0,
-        AXIS_RIGHT_Y: 0.0
+        AXIS_RIGHT_Y: 0.0,
+        AXIS_LEFT_TRIGGER:  0.0,  # <--- For debugging display
+        AXIS_RIGHT_TRIGGER: 0.0   # <--- For debugging display
     }
 }
 
@@ -151,7 +155,7 @@ def update_ui_thread(bus, node_ids, endpoints, metrics_text, joystick_text, loop
         f"{m:<{col_widths[m]}}" for m in METRIC_ENDPOINTS
     )
 
-    axis_names = ["LeftX", "LeftY", "RightX", "RightY"]
+    axis_names = ["LeftX", "LeftY", "RightX", "RightY", "LTrig", "RTrig"]
     axis_col_w = max(len(n) for n in axis_names) + 3
     joy_header_line = "LB".ljust(8) + "".join(x.ljust(axis_col_w) for x in axis_names)
 
@@ -174,8 +178,17 @@ def update_ui_thread(bus, node_ids, endpoints, metrics_text, joystick_text, loop
         # Joystick line
         lb_str = "Pressed" if joystick_states["LB"] else "NotPress"
         joy_line = lb_str.ljust(8)
-        for idx in (AXIS_LEFT_X, AXIS_LEFT_Y, AXIS_RIGHT_X, AXIS_RIGHT_Y):
-            val = joystick_states["axes"].get(idx, 0.0)
+
+        # We display the 6 axes we track
+        axis_values = [
+            joystick_states["axes"].get(AXIS_LEFT_X, 0.0),
+            joystick_states["axes"].get(AXIS_LEFT_Y, 0.0),
+            joystick_states["axes"].get(AXIS_RIGHT_X, 0.0),
+            joystick_states["axes"].get(AXIS_RIGHT_Y, 0.0),
+            joystick_states["axes"].get(AXIS_LEFT_TRIGGER, 0.0),
+            joystick_states["axes"].get(AXIS_RIGHT_TRIGGER, 0.0),
+        ]
+        for val in axis_values:
             joy_line += f"{val:>6.2f}".ljust(axis_col_w)
 
         joystick_text.set_text(joy_header_line + "\n" + joy_line)
@@ -221,10 +234,16 @@ def joystick_thread_func(
         rx = apply_dead_zone(joystick.get_axis(AXIS_RIGHT_X))
         ry = apply_dead_zone(joystick.get_axis(AXIS_RIGHT_Y))
 
-        joystick_states["axes"][AXIS_LEFT_X]  = raw_bend
-        joystick_states["axes"][AXIS_LEFT_Y]  = raw_rotate
-        joystick_states["axes"][AXIS_RIGHT_X] = rx
-        joystick_states["axes"][AXIS_RIGHT_Y] = ry
+        # New triggers
+        raw_lt = apply_dead_zone(joystick.get_axis(AXIS_LEFT_TRIGGER))
+        raw_rt = apply_dead_zone(joystick.get_axis(AXIS_RIGHT_TRIGGER))
+
+        joystick_states["axes"][AXIS_LEFT_X]       = raw_bend
+        joystick_states["axes"][AXIS_LEFT_Y]       = raw_rotate
+        joystick_states["axes"][AXIS_RIGHT_X]      = rx
+        joystick_states["axes"][AXIS_RIGHT_Y]      = ry
+        joystick_states["axes"][AXIS_LEFT_TRIGGER] = raw_lt
+        joystick_states["axes"][AXIS_RIGHT_TRIGGER] = raw_rt
 
         if lb:
             # Possibly controlling the normal joints or the gripper
@@ -275,7 +294,6 @@ def joystick_thread_func(
                     new_bend = gripper_ctrl.bend_pos + (raw_bend * VELOCITY_SCALING * FOREARM_VELOCITY_SCALING * dt)
                     new_rotate = gripper_ctrl.rotate_pos + (raw_rotate * VELOCITY_SCALING * FOREARM_VELOCITY_SCALING * dt)
 
-                    # clamp each
                     if new_bend < BEND_MIN:
                         new_bend = BEND_MIN
                     if new_bend > BEND_MAX:
@@ -288,6 +306,27 @@ def joystick_thread_func(
                     gripper_ctrl.bend_pos   = new_bend
                     gripper_ctrl.rotate_pos = new_rotate
                     gripper_ctrl.apply()
+
+            # Always handle the 'trigger-driven' ODrive (node7) if present
+            if 7 in node_ids:
+                new_pos = joint_positions[7]
+
+                # Pressing left trigger => move negative
+                if raw_lt > 0:
+                    new_pos -= raw_lt * VELOCITY_SCALING * GRIPPER_SCALING * dt
+
+                # Pressing right trigger => move positive
+                if raw_rt > 0:
+                    new_pos += raw_rt * VELOCITY_SCALING * GRIPPER_SCALING * dt
+
+                # Clamp in [TRIGGER_MIN, TRIGGER_MAX]
+                if new_pos < TRIGGER_MIN:
+                    new_pos = TRIGGER_MIN
+                elif new_pos > TRIGGER_MAX:
+                    new_pos = TRIGGER_MAX
+
+                joint_positions[7] = new_pos
+                move_odrive_to_position(bus, 7, joint_positions[7])
 
         time.sleep(0.01)
 
